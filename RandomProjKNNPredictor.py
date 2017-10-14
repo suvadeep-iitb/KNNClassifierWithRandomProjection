@@ -7,7 +7,7 @@ import multiprocessing
 import nmslib
 import math
 from liblinearutil import *
-
+#from itertools import zip
 
 def RandProj(X, Y, params):
   L = Y.shape[1]
@@ -66,12 +66,11 @@ def ComputeKNN(W, X, Xt, nnTest, numThreads):
 
 
 def ArgSortCoo(M):
-  tuples = izip(M.row, M.col, M.data);
+  tuples = zip(M.row, M.col, M.data);
   sortedTuples = sorted(tuples, key=lambda x: (x[0], x[2]))
 
   # Create a sparse matrix 
-  sortedLabel = coo_matrix(M.shape, dtype=int64);
-  sortedVal = coo_matrix(M.shape, dtype=float);
+  sortedIdx = lil_matrix(M.shape, dtype=np.uint64);
   colIdx = 0
   rowIdx = 0
   for t in sortedTuples:
@@ -94,10 +93,11 @@ def PredictY(Y, KNN, nnTest):
   KNN = KNN[:, :nnTest]
   nt = KNN.shape[0]
   l = Y.shape[1]
-  scoreYt = coo_matrix((nt, l));
+  scoreYt = lil_matrix((nt, l));
   for i in range(nt):
     scoreYt[i, :] = np.mean(Y[KNN[i, :], :], axis = 0)
-  predYt = ArgSortCoo(predYt);
+  predYt = ArgSortCoo(coo_matrix(scoreYt));
+  scoreYt = csr_matrix(scoreYt);
   return predYt, scoreYt[predYt]
 
 

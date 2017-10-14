@@ -19,7 +19,7 @@ params = {
   "maxTrainSamples": 1000}
 
 lambdaList = [0.1]
-nnTestList = [5, 10, 50]
+nnTestList = [5, 10, 20]
 embDimList = [100, 200]
 
 for i in [3]:
