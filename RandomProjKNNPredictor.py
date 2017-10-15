@@ -7,7 +7,7 @@ import multiprocessing
 import nmslib
 import math
 from liblinearutil import *
-#from itertools import zip
+from sklearn.metrics.pairwise import euclidean_distances
 
 def RandProj(X, Y, params):
   L = Y.shape[1]
@@ -29,13 +29,7 @@ def RandProj(X, Y, params):
   libArgs = '-s 11 -p 0 -c '+str(C)+' -q'
   numCores = numThreads; # multiprocessing.cpu_count()
   resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], X, libArgs) for l in range(embDim))
-  '''
-  for l in range(embDim):
-    model = train(Z[:, l], X, libArgs);
-    W[:, l] = model.get_decfun()[0]
-  '''
 
-  print(str(len(resultList[0])))
   # Collect the model parameters into a matrix
   for l in range(embDim):    
     W[:, l] = resultList[l]
@@ -52,7 +46,7 @@ def TrainWrapper(Z, X, libArgs):
 
 
 
-def ComputeKNN(W, X, Xt, nnTest, numThreads):
+def ComputeAKNN(W, X, Xt, nnTest, numThreads):
   # Project the X and Xt into the embedding space
   pX = X * W;
   pXt = Xt * W;
@@ -66,13 +60,37 @@ def ComputeKNN(W, X, Xt, nnTest, numThreads):
   neighbors = index.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
   
   # Create the KNN matrix
-  KNN = np.zeros((pXt.shape[0], nnTest), dtype=np.int64);
+  AKNN = np.zeros((pXt.shape[0], nnTest), dtype=np.int64);
   for i,nei in enumerate(neighbors):
     if (len(nei[0]) < nnTest):
       print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
-    KNN[i, :] = nei[0]
+    AKNN[i, :] = nei[0]
+
+  return AKNN
+
+
+
+def ComputeKNN(W, X, Xt, nnTest, numThreads):
+  nt = Xt.shape[0]
+
+  # Project the X and Xt into the embedding space
+  pX = X * W;
+  pXt = Xt * W;
+
+  batchSize = 10
+  numBatch = int(math.ceil(float(nt)/batchSize))
+  KNN = np.zeros((nt, nnTest), dtype=np.uint64)
+  
+  for b in range(numBatch):
+    sIdx = b*batchSize
+    eIdx = min((b+1)*batchSize, nt)
+    dist = euclidean_distances(pXt[sIdx: eIdx], pX)
+    neighbors = np.argpartition(dist, nnTest)[:nnTest]
+    dist = dist[neighbors]
+    KNN[sIdx: eIdx, :] = neighbors[np.argsort(dist)]
 
   return KNN
+
 
 
 def SortCooMatrix(M):
@@ -149,7 +167,7 @@ def ComputePrecisionParallel(predYt, Yt, K, numThreads):
 
 
 
-
+'''
 def ComputePrecision(predYt, Yt, K):
   assert(predYt.shape == Yt.shape)
   nt = Yt.shape[0]
@@ -161,6 +179,19 @@ def ComputePrecision(predYt, Yt, K):
           precision[k, 0] += 1/float(k+1)
   precision /= float(nt)
   return precision
+'''
+def ComputePrecision(predYt, Yt, K):
+  assert(predYt.shape == Yt.shape)
+  nt = Yt.shape[0]
+  precision = np.zeros((K, 1), dtype=np.float)
+  for k in range(1, K+1):
+    for i in range(Yt.shape[0]):
+      for j in range(k):
+        if (Yt[i, predYt[i, j]] > 0.5):
+          precision[k-1, 0] += 1/float(k)
+  precision /= float(nt)
+  return precision
+
 
 
 
