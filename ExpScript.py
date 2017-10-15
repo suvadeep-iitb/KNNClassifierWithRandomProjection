@@ -15,14 +15,14 @@ params = {
   "embDim": 100,
   "normalize": 1,
   "lamb": 1,
-  "maxTestSamples": 500,
-  "maxTrainSamples": 1000}
+  "maxTestSamples": 500000,
+  "maxTrainSamples": 1000000}
 
 lambdaList = [0.1]
 nnTestList = [5, 10, 20]
-embDimList = [100, 200]
+embDimList = [100]
 
-for i in [7]:
+for i in [1, 2]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -38,4 +38,4 @@ for i in [7]:
     for ed in embDimList:
       params["embDim"] = ed
       print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));   
-      RandomProjKNNPredictor(data.X[:1000, :], data.Y[:1000, :], data.Xt, data.Yt, params, nnTestList); 
+      RandomProjKNNPredictor(data.X, data.Y, data.Xt, data.Yt, params, nnTestList); 
