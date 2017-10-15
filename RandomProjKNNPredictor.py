@@ -153,13 +153,13 @@ def ComputePrecisionParallel(predYt, Yt, K, numThreads):
 def ComputePrecision(predYt, Yt, K):
   assert(predYt.shape == Yt.shape)
   nt = Yt.shape[0]
-  precision = np.zeros((K, 1))
+  precision = np.zeros((K, 1), dtype=np.float)
   for i in range(Yt.shape[0]):
     for j in range(K):
-      if (Yt[i, predYt[i, j]] > 0):
+      if (Yt[i, predYt[i, j]] > 0.5):
         for k in range(j, K):
-          precision[k, 0] += 1
-  precision /= float((k+1)*nt)
+          precision[k, 0] += 1/float(k+1)
+  precision /= float(nt)
   return precision
 
 
