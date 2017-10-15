@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, hstack
+from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, hstack, vstack
 from collections import namedtuple
 import pickle
 from joblib import Parallel, delayed
@@ -28,17 +28,27 @@ def RandProj(X, Y, params):
   W = np.zeros((D, embDim), dtype=np.float);
   libArgs = '-s 11 -p 0 -c '+str(C)+' -q'
   numCores = numThreads; # multiprocessing.cpu_count()
-  # M = Parallel(n_jobs = numCores)(delayed(train)(Z[:, l], X, libArgs) for l in range(L))
+  resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], X, libArgs) for l in range(embDim))
+  '''
   for l in range(embDim):
     model = train(Z[:, l], X, libArgs);
     W[:, l] = model.get_decfun()[0]
+  '''
 
+  print(str(len(resultList[0])))
   # Collect the model parameters into a matrix
-  #for l in range(embDim):    
-  #  W[:, l] = M[l].w
+  for l in range(embDim):    
+    W[:, l] = resultList[l]
 
   # Return the model parameter
   return W
+
+
+
+def TrainWrapper(Z, X, libArgs):
+  model = train(Z, X, libArgs)
+  return model.get_decfun()[0]
+
 
 
 
@@ -65,77 +75,76 @@ def ComputeKNN(W, X, Xt, nnTest, numThreads):
   return KNN
 
 
-def ArgSortCoo(M):
+def SortCooMatrix(M):
   tuples = zip(M.row, M.col, M.data);
   sortedTuples = sorted(tuples, key=lambda x: (x[0], x[2]))
 
   # Create a sparse matrix 
   sortedIdx = lil_matrix(M.shape, dtype=np.uint64);
+  sortedVal = lil_matrix(M.shape, dtype=np.float);
   colIdx = 0
   rowIdx = 0
   for t in sortedTuples:
     if t[0] == rowIdx:
       sortedIdx[rowIdx, colIdx] = t[1]
+      sortedVal[rowIdx, colIdx] = t[2]
       colIdx += 1
     elif (t[0] == rowIdx+1):
       rowIdx += 1
       sortedIdx[rowIdx, 0] = t[1]
+      sortedVal[rowIdx, 0] = t[2]
       colIdx = 1
     else:
       assert(false)
-  return sortedIdx
+  return sortedIdx, sortedVal 
       
     
 
 
 def PredictY(Y, KNN, nnTest):
-  assert(KNN.shape[1] > nnTest)
+  assert(KNN.shape[1] >= nnTest)
   KNN = KNN[:, :nnTest]
   nt = KNN.shape[0]
-  l = Y.shape[1]
-  scoreYt = lil_matrix((nt, l));
+  L = Y.shape[1]
+  scoreYt = lil_matrix((nt, L));
   for i in range(nt):
     scoreYt[i, :] = np.mean(Y[KNN[i, :], :], axis = 0)
-  predYt = ArgSortCoo(coo_matrix(scoreYt));
-  scoreYt = csr_matrix(scoreYt);
-  return predYt, scoreYt[predYt]
+  predYt, scoreYt = SortCooMatrix(coo_matrix(scoreYt));
+  return predYt, scoreYt
 
 
 
 def PredictYParallel(Y, KNN, nnTest, numThreads):
   nt = KNN.shape[0]
-  l = Y.shape[1]
-  batchSize = int(nt/numThreads) + 1
+  L = Y.shape[1]
+  batchSize = int(math.ceil(float(nt)/numThreads))
   startIdx = [i*batchSize for i in range(numThreads)]
   endIdx = [min((i+1)*batchSize, nt) for i in range(numThreads)]
   
   numCores = numThreads;
   resultList = Parallel(n_jobs = numCores)(delayed(PredictY)(Y, KNN[s: e, :], nnTest) for s,e in zip(startIdx, endIdx))
-  predYt = coo_matrix(nt, l)
-  scoreYt = coo_matrix(nt, l)
-  for i in vrange(len(resultList)):
-    s = startIdx[i]
-    e = endIdx[i]
-    predYt[s: e, :] = resultList[i][0]
-    scoreYt[s: e, :] = resultList[i][1]
-  return 
+  predYt = vstack([tup[0] for tup in resultList], format='lil')
+  scoreYt = vstack([tup[1] for tup in resultList], format='lil')
+  assert(predYt.shape[0] == nt)
+  assert(scoreYt.shape[0] == nt)
+  return predYt, scoreYt
 
 
 
  
 def ComputePrecisionParallel(predYt, Yt, K, numThreads):
   assert(predYt.shape == Yt.shape)
-  nt, l = Yt.shape
-  batchSize = int(nt/numThreads) + 1
+  nt, L = Yt.shape
+  batchSize = int(math.ceil(float(nt)/numThreads))
   startIdx = [i*batchSize for i in range(numThreads)]
   endIdx = [min((i+1)*batchSize, nt) for i in range(numThreads)]
   
   numCores = numThreads;
-  resultList = Parallel(n_jobs = numCores)(delayed(ComputePrecision)(predYt[s: e, :], Yt[s: e, :]) for s,e in zip(startIdx, endIdx))
-  precision = [0]*K
+  resultList = Parallel(n_jobs = numCores)(delayed(ComputePrecision)(predYt[s: e, :], Yt[s: e, :], K) for s,e in zip(startIdx, endIdx))
+  precision = np.zeros((K, 1))
   for i, res in enumerate(resultList):
     precision += res * (endIdx[i] - startIdx[i])
-  precision /= float(nt);
+  precision /= float(nt)
   return precision
 
 
@@ -144,14 +153,13 @@ def ComputePrecisionParallel(predYt, Yt, K, numThreads):
 def ComputePrecision(predYt, Yt, K):
   assert(predYt.shape == Yt.shape)
   nt = Yt.shape[0]
-  precision = [0]*K
+  precision = np.zeros((K, 1))
   for i in range(Yt.shape[0]):
     for j in range(K):
       if (Yt[i, predYt[i, j]] > 0):
         for k in range(j, K):
-          precision[k] += 1
-  for k in range(K):
-    precision[k] /= float((k+1)*nt)
+          precision[k, 0] += 1
+  precision /= float((k+1)*nt)
   return precision
 
 
@@ -187,31 +195,36 @@ def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
 
   W = RandProj(X_sam, Y_sam, params);
 
+  print("\tTraining Finished")
+
   maxNNTest = max(nnTestList);
   numThreads = params["numThreads"];
 
   # Compute K nearest neighbors for sampled test examples
+  print("\tComputing KNN of test examples")
   KNN = ComputeKNN(W, X, Xt, maxNNTest, numThreads);
 
   # Compute K nearest neighbors for sampled train examples
+  print("\tComputing KNN of training examples")
   KNN_tr = ComputeKNN(W, X, X_sam_t, maxNNTest, numThreads);
 
   for nnt in range(len(nnTestList)):
     nnTest = nnTestList[nnt]
 
     # Predict labels for sampled test data
-    predYt, scoreYt = PredictY(Y, KNN, nnTest)
+    predYt, scoreYt = PredictYParallel(Y, KNN, nnTest, numThreads)
 
     # Compute precisions for sampled test data
-    precision = ComputePrecision(predYt, Yt)
+    precision = ComputePrecisionParallel(predYt, Yt, 5, numThreads)
 
     # Predict labels for sampled train data
-    predYt_tr, scoreYt_tr = PredictY(Y, KNN_tr, nnTest)
+    predYt_tr, scoreYt_tr = PredictYParallel(Y, KNN_tr, nnTest, numThreads)
 
     # Compute precisions for sampled train data
-    precision_tr = ComputePrecision(predYt_tr, Y_sam_t)
+    precision_tr = ComputePrecisionParallel(predYt_tr, Y_sam_t, 5, numThreads)
 
     # Save result
+    res = {}
     res["precision"] = precision
     res["predictedLabel"] = predYt
     res["score"] = scoreYt
@@ -219,6 +232,6 @@ def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
     res["predictedLabel_tr"] = predYt_tr
     res["score_tr"] = scoreYt_tr
 
-    resFile = ['Results/', params.resFilePrefix, '_L', str(params.lamb), '_D', str(params.embDim), '_NN', str(nnTest), '.pkl'];
-    pickle.dump(res, open(resFile, 'wb'));
+    resFile = 'Results/'+params["resFilePrefix"]+'_L'+str(params["lamb"])+'_D'+str(params["embDim"])+'_NN'+str(nnTest)+'.pkl'
+    pickle.dump(res, open(resFile, 'wb'))
 

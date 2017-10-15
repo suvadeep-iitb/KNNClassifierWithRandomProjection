@@ -19,5 +19,9 @@ labelStruct5 = LabelStruct(fileName="../DataSets/ALOI/aloi_scale.pkl", totalCoun
 # For wikiLSHTC, the maxCount is 198. Using 10 instead
 labelStruct6 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC.pkl", totalCount=325056, maxCount=10, avgCount=3.192231, resFile='res_wikiLSHTC');
 
+# Taking arbitrary value for maxCount and avgCount
+labelStruct6 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_small.pkl", totalCount=1944958, maxCount=10, avgCount=1.592231, resFile='res_relatedSearch');
 
-labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6];
+
+
+labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct6];

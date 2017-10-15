@@ -22,7 +22,7 @@ lambdaList = [0.1]
 nnTestList = [5, 10, 20]
 embDimList = [100, 200]
 
-for i in [3]:
+for i in [7]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -32,7 +32,7 @@ for i in [3]:
     normalize(data.X, norm = 'l2', copy = False);
     normalize(data.Xt, norm = 'l2', copy = False);
 
-  resFilePrefix = labelStruct.resFile;
+  params["resFilePrefix"] = labelStruct.resFile;
   for lam in lambdaList:
     params["lamb"] = lam
     for ed in embDimList:
