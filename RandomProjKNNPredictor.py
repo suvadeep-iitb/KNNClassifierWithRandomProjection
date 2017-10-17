@@ -45,7 +45,6 @@ def TrainWrapper(Z, X, libArgs):
 
 
 
-
 def ComputeAKNN(W, X, Xt, nnTest, numThreads):
   # Project the X and Xt into the embedding space
   pX = X * W;
@@ -77,7 +76,7 @@ def ComputeKNN(W, X, Xt, nnTest, numThreads):
   pX = X * W;
   pXt = Xt * W;
 
-  batchSize = 10
+  batchSize = 100
   numBatch = int(math.ceil(float(nt)/batchSize))
   KNN = np.zeros((nt, nnTest), dtype=np.uint64)
   
@@ -85,16 +84,23 @@ def ComputeKNN(W, X, Xt, nnTest, numThreads):
     sIdx = b*batchSize
     eIdx = min((b+1)*batchSize, nt)
     dist = euclidean_distances(pXt[sIdx: eIdx], pX)
-    neighbors = np.argpartition(dist, nnTest)[:nnTest]
-    dist = dist[neighbors]
-    KNN[sIdx: eIdx, :] = neighbors[np.argsort(dist)]
+    neighbors = np.argpartition(dist, nnTest)[:, :nnTest]
+    dist_temp = np.zeros(neighbors.shape)
+    for i in range(eIdx - sIdx):
+      for j in range(nnTest):
+        dist_temp[i, j] = dist[i, neighbors[i, j]]
+    dist = dist_temp
+    sortedIdx = np.argsort(dist)
+    for i in range(eIdx - sIdx):
+      for j in range(nnTest):
+        KNN[sIdx + i, j] = neighbors[i, sortedIdx[i, j]]
 
   return KNN
 
 
 
 def SortCooMatrix(M):
-  tuples = zip(M.row, M.col, M.data);
+  tuples = zip(M.row, M.col, -M.data);
   sortedTuples = sorted(tuples, key=lambda x: (x[0], x[2]))
 
   # Create a sparse matrix 
@@ -105,12 +111,12 @@ def SortCooMatrix(M):
   for t in sortedTuples:
     if t[0] == rowIdx:
       sortedIdx[rowIdx, colIdx] = t[1]
-      sortedVal[rowIdx, colIdx] = t[2]
+      sortedVal[rowIdx, colIdx] = -t[2]
       colIdx += 1
     elif (t[0] == rowIdx+1):
       rowIdx += 1
       sortedIdx[rowIdx, 0] = t[1]
-      sortedVal[rowIdx, 0] = t[2]
+      sortedVal[rowIdx, 0] = -t[2]
       colIdx = 1
     else:
       assert(false)
@@ -167,14 +173,13 @@ def ComputePrecisionParallel(predYt, Yt, K, numThreads):
 
 
 
-'''
 def ComputePrecision(predYt, Yt, K):
   assert(predYt.shape == Yt.shape)
   nt = Yt.shape[0]
   precision = np.zeros((K, 1), dtype=np.float)
   for i in range(Yt.shape[0]):
     for j in range(K):
-      if (Yt[i, predYt[i, j]] > 0.5):
+      if (Yt[i, predYt[i, j]] > 0):
         for k in range(j, K):
           precision[k, 0] += 1/float(k+1)
   precision /= float(nt)
@@ -185,12 +190,14 @@ def ComputePrecision(predYt, Yt, K):
   nt = Yt.shape[0]
   precision = np.zeros((K, 1), dtype=np.float)
   for k in range(1, K+1):
-    for i in range(Yt.shape[0]):
+    for i in range(nt):
       for j in range(k):
-        if (Yt[i, predYt[i, j]] > 0.5):
-          precision[k-1, 0] += 1/float(k)
-  precision /= float(nt)
+        if (Yt[i, predYt[i, j]] > 0):
+          precision[k-1, 0] += 1
+  for k in range(K):
+    precision[k, 0] /= float(nt)*(k+1)
   return precision
+'''
 
 
 
@@ -206,6 +213,32 @@ def DownSampleData(X, Y, sampleSize):
     Xnew = X
     Ynew = Y
   return Xnew, Ynew
+
+
+
+def SaveModel(W, filename):
+  D, d = W.shape
+  with open(filename, 'w') as fout:
+    fout.write(str(D) + ' ' + str(d) + '\n')
+    for r in range(D):
+      for c in range(d):
+        fout.write(str(W[r, c]) + ' ');
+      fout.write('\n');
+
+
+
+def LoadModel(filename):
+  with open(filename) as fin:
+    line = fin.readline().split();
+    D = int(line[0])
+    d = int(line[1])
+    W = np.zeros((D, d))
+    for r in range(D):
+      line = fin.readline().split()
+      assert(len(line) == d)
+      for c in range(d):
+        W[r, c] = float(line[c]);
+  return W
 
 
 
@@ -227,17 +260,18 @@ def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
   W = RandProj(X_sam, Y_sam, params);
 
   print("\tTraining Finished")
+  #SaveModel(W, 'model_file.txt')
 
   maxNNTest = max(nnTestList);
   numThreads = params["numThreads"];
 
   # Compute K nearest neighbors for sampled test examples
-  print("\tComputing KNN of test examples")
-  KNN = ComputeKNN(W, X, Xt, maxNNTest, numThreads);
+  print("\tComputing Approximate KNN of test examples")
+  KNN = ComputeAKNN(W, X, Xt, maxNNTest, numThreads);
 
   # Compute K nearest neighbors for sampled train examples
-  print("\tComputing KNN of training examples")
-  KNN_tr = ComputeKNN(W, X, X_sam_t, maxNNTest, numThreads);
+  print("\tComputing Approximate KNN of training examples")
+  KNN_tr = ComputeAKNN(W, X, X_sam_t, maxNNTest, numThreads);
 
   for nnt in range(len(nnTestList)):
     nnTest = nnTestList[nnt]

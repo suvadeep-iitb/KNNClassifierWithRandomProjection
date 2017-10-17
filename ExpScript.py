@@ -22,7 +22,7 @@ lambdaList = [0.1]
 nnTestList = [5, 10, 20]
 embDimList = [100]
 
-for i in [1]:
+for i in [1, 2]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
