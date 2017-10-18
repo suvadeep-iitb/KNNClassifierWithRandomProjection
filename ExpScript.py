@@ -17,22 +17,23 @@ class Data:
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 1,
+  "numThreads": 5,
   "embDim": 100,
   "normalize": 1,
   "lamb": 1,
   "maxTestSamples": 500000,
-  "maxTrainSamples": 10000000}
+  "maxTrainSamples": 100000000}
 
 lambdaList = [0.0001, 0.01, 1, 100, 1000]
 nnTestList = [5, 10, 20]
 embDimList = [100, 500]
 
-for i in [6]:
+for i in [7]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
   data = pickle.load(open(dataFile, 'rb'))
+  # For related search data, feature matrix in dense
 
   if params["normalize"] == 1:
     print("Normalizing data ...")

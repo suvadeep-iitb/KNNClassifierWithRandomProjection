@@ -9,8 +9,9 @@ import math
 from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.svm import LinearSVR
-#from MyThread import MyThread
-#import threading
+from MyThread import myThread
+import threading
+from MyQueue import myQueue
 
 def RandProj(X, Y, params):
   L = Y.shape[1]
@@ -35,55 +36,66 @@ def RandProj(X, Y, params):
 
   # Collect the model parameters into a matrix
   for l in range(embDim):    
-    #print("Training for " + str(l) + 'th label')
-    #model = train(Z[:, l], X, libArgs)
-    #W[:, l] = model.get_decfun()[0]
     W[:, l] = resultList[l]
 
   '''
-  params = {"X": X, "Z": Z, "C": C, "W": W}
-  # Create new threads
-  threadList = []
-  queueLock = threading.Lock()
-  labelQueue = Queue.Queue(embDim)
-  for tID in range(numThreads):
-    thread = MyThread(tID, labelQueue)
-    thread.start(TrainWrapper, params)
-    threadList.append(thread)
-
   # Put the labels into the queue
+  queueLock = threading.Lock()
+  labelQueue = myQueue()
   queueLock.acquire()
   for l in range(embDim):
-    workQueue.put(l)
+    labelQueue.enqueue(l)
   queueLock.release()
+
+  params = {"X": X, "Z": Z, "C": C, "W": W}
+
+  # Create new threads
+  threadList = []
+  for tID in range(numThreads):
+    thread = myThread(tID, labelQueue, queueLock, TrainWrapper, params)
+    thread.start()
+    threadList.append(thread)
 
   # Wait for all threads to complete
   for t in threadList:
     t.join()
-  '''
 
   # Return the model parameter
-  return W
+  return params["W"]
+  '''
 
 
-
-def TrainWrapper(Z, X, l, C):
-  #model = train(Z, X, libArgs)
-  #return model.get_decfun()[0]
+'''
+def TrainWrapper(l, params):
+  X = params["X"]
+  Z = params["Z"][:, l]
+  C = params["C"]
+  
   model = LinearSVR(epsilon=0.0, 
                     C=C, 
                     loss='squared_epsilon_insensitive', 
                     dual=False, 
                     fit_intercept=False)
   model.fit(X, Z)
-  return model.coef_
+  params["W"][:, l] = model.coef_
+'''
 
+def TrainWrapper(Z, X, l, C):
+  print("Staring training for "+str(l)+"th label...")
+  model = LinearSVR(epsilon=0.0, 
+                    C=C, 
+                    loss='squared_epsilon_insensitive', 
+                    dual=False, 
+                    fit_intercept=False)
+  model.fit(X, Z)
+  print("Completed training for "+str(l)+"th label...")
+  return model.coef_
 
 
 def ComputeAKNN(W, X, Xt, nnTest, numThreads):
   # Project the X and Xt into the embedding space
-  pX = X * W;
-  pXt = Xt * W;
+  pX = np.matmul(X, W);
+  pXt = np.matmul(Xt, W);
 
   # initialize a new index, using a HNSW index on l2 space
   index = nmslib.init(method='hnsw', space='l2')
