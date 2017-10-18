@@ -8,6 +8,9 @@ import nmslib
 import math
 from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.svm import LinearSVR
+#from MyThread import MyThread
+#import threading
 
 def RandProj(X, Y, params):
   L = Y.shape[1]
@@ -26,23 +29,54 @@ def RandProj(X, Y, params):
 
   # Perform linear regression using liblinear
   W = np.zeros((D, embDim), dtype=np.float);
-  libArgs = '-s 11 -p 0 -c '+str(C)+' -q'
+  libArgs = '-s 11 -p 0 -c '+str(C)+' -n '+str(numThreads)+' -q'
   numCores = numThreads; # multiprocessing.cpu_count()
-  resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], l, X, libArgs) for l in range(embDim))
+  resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], X, l, C) for l in range(embDim))
 
   # Collect the model parameters into a matrix
   for l in range(embDim):    
+    #print("Training for " + str(l) + 'th label')
+    #model = train(Z[:, l], X, libArgs)
+    #W[:, l] = model.get_decfun()[0]
     W[:, l] = resultList[l]
+
+  '''
+  params = {"X": X, "Z": Z, "C": C, "W": W}
+  # Create new threads
+  threadList = []
+  queueLock = threading.Lock()
+  labelQueue = Queue.Queue(embDim)
+  for tID in range(numThreads):
+    thread = MyThread(tID, labelQueue)
+    thread.start(TrainWrapper, params)
+    threadList.append(thread)
+
+  # Put the labels into the queue
+  queueLock.acquire()
+  for l in range(embDim):
+    workQueue.put(l)
+  queueLock.release()
+
+  # Wait for all threads to complete
+  for t in threadList:
+    t.join()
+  '''
 
   # Return the model parameter
   return W
 
 
 
-def TrainWrapper(Z, l, X, libArgs):
-  print("Training for " + str(l) + 'th label')
-  model = train(Z, X, libArgs)
-  return model.get_decfun()[0]
+def TrainWrapper(Z, X, l, C):
+  #model = train(Z, X, libArgs)
+  #return model.get_decfun()[0]
+  model = LinearSVR(epsilon=0.0, 
+                    C=C, 
+                    loss='squared_epsilon_insensitive', 
+                    dual=False, 
+                    fit_intercept=False)
+  model.fit(X, Z)
+  return model.coef_
 
 
 
