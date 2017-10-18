@@ -28,7 +28,7 @@ def RandProj(X, Y, params):
   W = np.zeros((D, embDim), dtype=np.float);
   libArgs = '-s 11 -p 0 -c '+str(C)+' -q'
   numCores = numThreads; # multiprocessing.cpu_count()
-  resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], X, libArgs) for l in range(embDim))
+  resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], l, X, libArgs) for l in range(embDim))
 
   # Collect the model parameters into a matrix
   for l in range(embDim):    
@@ -39,7 +39,8 @@ def RandProj(X, Y, params):
 
 
 
-def TrainWrapper(Z, X, libArgs):
+def TrainWrapper(Z, l, X, libArgs):
+  print("Training for " + str(l) + 'th label')
   model = train(Z, X, libArgs)
   return model.get_decfun()[0]
 
@@ -69,14 +70,14 @@ def ComputeAKNN(W, X, Xt, nnTest, numThreads):
 
 
 
-def ComputeKNN(W, X, Xt, nnTest, numThreads):
+def ComputeKNN(W, X, Xt, nnTest):
   nt = Xt.shape[0]
 
   # Project the X and Xt into the embedding space
   pX = X * W;
   pXt = Xt * W;
 
-  batchSize = 100
+  batchSize = 1000
   numBatch = int(math.ceil(float(nt)/batchSize))
   KNN = np.zeros((nt, nnTest), dtype=np.uint64)
   
@@ -154,7 +155,6 @@ def PredictYParallel(Y, KNN, nnTest, numThreads):
   return predYt, scoreYt
 
 
-
  
 def ComputePrecisionParallel(predYt, Yt, K, numThreads):
   assert(predYt.shape == Yt.shape)
@@ -201,8 +201,6 @@ def ComputePrecision(predYt, Yt, K):
 
 
 
-
-
 def DownSampleData(X, Y, sampleSize):
   n = X.shape[0]
   if (n > sampleSize):
@@ -227,6 +225,7 @@ def SaveModel(W, filename):
 
 
 
+
 def LoadModel(filename):
   with open(filename) as fin:
     line = fin.readline().split();
@@ -245,11 +244,13 @@ def LoadModel(filename):
 def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
   # Make sure label index is stating from 1
   if ((Y[:, 0].nnz != 0) or (Yt[:, 0].nnz != 0)):
+    print("Pre-pending zero column in the label matrices")
     Y = csr_matrix(hstack((csr_matrix((Y.shape[0], 1)), Y)))
     Yt = csr_matrix(hstack((csr_matrix((Yt.shape[0], 1)), Yt)))
 
   maxTestSamples = params["maxTestSamples"]
   maxTrainSamples= params["maxTrainSamples"]
+  print("Performing down-sampling")
   # Sample test data for faster compuation of test precision
   Xt, Yt = DownSampleData(Xt, Yt, maxTestSamples)
   # Sample train data for faster training
@@ -257,10 +258,10 @@ def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
   # sample train data for faster computation of train precision
   X_sam_t, Y_sam_t = DownSampleData(X, Y, maxTestSamples)
 
+  print("Starting training")
   W = RandProj(X_sam, Y_sam, params);
 
   print("\tTraining Finished")
-  #SaveModel(W, 'model_file.txt')
 
   maxNNTest = max(nnTestList);
   numThreads = params["numThreads"];
@@ -291,11 +292,11 @@ def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
     # Save result
     res = {}
     res["precision"] = precision
-    res["predictedLabel"] = predYt
-    res["score"] = scoreYt
+    #res["predictedLabel"] = predYt
+    #res["score"] = scoreYt
     res["precision_tr"] = precision_tr
-    res["predictedLabel_tr"] = predYt_tr
-    res["score_tr"] = scoreYt_tr
+    #res["predictedLabel_tr"] = predYt_tr
+    #res["score_tr"] = scoreYt_tr
 
     resFile = 'Results/'+params["resFilePrefix"]+'_L'+str(params["lamb"])+'_D'+str(params["embDim"])+'_NN'+str(nnTest)+'.pkl'
     pickle.dump(res, open(resFile, 'wb'))
