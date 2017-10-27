@@ -12,6 +12,7 @@ from sklearn.svm import LinearSVR
 from MyThread import myThread
 import threading
 from MyQueue import myQueue
+from datetime import datetime
 
 def RandProj(X, Y, params):
   L = Y.shape[1]
@@ -63,6 +64,7 @@ def RandProj(X, Y, params):
   # Return the model parameter
   return params["W"]
   '''
+  return W
 
 
 '''
@@ -290,13 +292,13 @@ def LoadModel(filename):
 def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
   # Make sure label index is stating from 1
   if ((Y[:, 0].nnz != 0) or (Yt[:, 0].nnz != 0)):
-    print("Pre-pending zero column in the label matrices")
+    print(str(datetime.now()) + " : " + "Pre-pending zero column in the label matrices")
     Y = csr_matrix(hstack((csr_matrix((Y.shape[0], 1)), Y)))
     Yt = csr_matrix(hstack((csr_matrix((Yt.shape[0], 1)), Yt)))
 
   maxTestSamples = params["maxTestSamples"]
   maxTrainSamples= params["maxTrainSamples"]
-  print("Performing down-sampling")
+  print(str(datetime.now()) + " : " + "Performing down-sampling")
   # Sample test data for faster compuation of test precision
   Xt, Yt = DownSampleData(Xt, Yt, maxTestSamples)
   # Sample train data for faster training
@@ -304,38 +306,43 @@ def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
   # sample train data for faster computation of train precision
   X_sam_t, Y_sam_t = DownSampleData(X, Y, maxTestSamples)
 
-  print("Starting training")
+  print(str(datetime.now()) + " : " + "Starting training")
   W = RandProj(X_sam, Y_sam, params);
 
-  print("\tTraining Finished")
+  print(str(datetime.now()) + " : " + "Training Finished")
 
   maxNNTest = max(nnTestList);
   numThreads = params["numThreads"];
 
   # Compute K nearest neighbors for sampled test examples
-  print("\tComputing Approximate KNN of test examples")
+  print(str(datetime.now()) + " : " + "Computing Approximate KNN of test examples")
   KNN = ComputeAKNN(W, X, Xt, maxNNTest, numThreads);
 
   # Compute K nearest neighbors for sampled train examples
-  print("\tComputing Approximate KNN of training examples")
+  print(str(datetime.now()) + " : " + "Computing Approximate KNN of training examples")
   KNN_tr = ComputeAKNN(W, X, X_sam_t, maxNNTest, numThreads);
 
   for nnt in range(len(nnTestList)):
     nnTest = nnTestList[nnt]
 
     # Predict labels for sampled test data
+    print(str(datetime.now()) + " : " + "Performing prediction on sampled test set")
     predYt, scoreYt = PredictYParallel(Y, KNN, nnTest, numThreads)
 
     # Compute precisions for sampled test data
+    print(str(datetime.now()) + " : " + "Computing precisions for sampled test set")
     precision = ComputePrecisionParallel(predYt, Yt, 5, numThreads)
 
     # Predict labels for sampled train data
+    print(str(datetime.now()) + " : " + "Performing prediction on sampled train set")
     predYt_tr, scoreYt_tr = PredictYParallel(Y, KNN_tr, nnTest, numThreads)
 
     # Compute precisions for sampled train data
+    print(str(datetime.now()) + " : " + "Computing precisions for sampled train set")
     precision_tr = ComputePrecisionParallel(predYt_tr, Y_sam_t, 5, numThreads)
 
     # Save result
+    print(str(datetime.now()) + " : " + "Saving Results")
     res = {}
     res["precision"] = precision
     #res["predictedLabel"] = predYt

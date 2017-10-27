@@ -17,16 +17,16 @@ class Data:
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 5,
+  "numThreads": 15,
   "embDim": 100,
   "normalize": 1,
   "lamb": 1,
-  "maxTestSamples": 500000,
-  "maxTrainSamples": 100000000}
+  "maxTestSamples": 100000,
+  "maxTrainSamples": 100000}
 
 lambdaList = [0.0001, 0.01, 1, 100, 1000]
 nnTestList = [5, 10, 20]
-embDimList = [100, 500]
+embDimList = [100]
 
 for i in [7]:
   labelStruct = lc.labelStructs[i]
@@ -34,6 +34,13 @@ for i in [7]:
   print("Running for " + dataFile)
   data = pickle.load(open(dataFile, 'rb'))
   # For related search data, feature matrix in dense
+
+  perm = np.random.permutation(data.X.shape[0])
+  data.X = data.X[perm, :]
+  data.Y = data.Y[perm, :]
+  perm = np.random.permutation(data.Xt.shape[0])
+  data.Xt = data.Xt[perm, :]
+  data.Yt = data.Yt[perm, :]
 
   if params["normalize"] == 1:
     print("Normalizing data ...")
