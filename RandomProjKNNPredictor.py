@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, hstack, vstack
+from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, hstack, vstack, issparse
 from collections import namedtuple
 import pickle
 from joblib import Parallel, delayed
@@ -31,6 +31,7 @@ def RandProj(X, Y, params):
 
   # Perform linear regression using liblinear
   W = np.zeros((D, embDim), dtype=np.float);
+
   libArgs = '-s 11 -p 0 -c '+str(C)+' -n '+str(numThreads)+' -q'
   numCores = numThreads; # multiprocessing.cpu_count()
   resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], X, l, C) for l in range(embDim))
@@ -38,7 +39,7 @@ def RandProj(X, Y, params):
   # Collect the model parameters into a matrix
   for l in range(embDim):    
     W[:, l] = resultList[l]
-
+  return W
   '''
   # Put the labels into the queue
   queueLock = threading.Lock()
@@ -64,7 +65,6 @@ def RandProj(X, Y, params):
   # Return the model parameter
   return params["W"]
   '''
-  return W
 
 
 '''
@@ -82,6 +82,7 @@ def TrainWrapper(l, params):
   params["W"][:, l] = model.coef_
 '''
 
+
 def TrainWrapper(Z, X, l, C):
   print("Staring training for "+str(l)+"th label...")
   model = LinearSVR(epsilon=0.0, 
@@ -94,15 +95,29 @@ def TrainWrapper(Z, X, l, C):
   return model.coef_
 
 
-def ComputeAKNN(W, X, Xt, nnTest, numThreads):
-  # Project the X and Xt into the embedding space
-  pX = np.matmul(X, W);
-  pXt = np.matmul(Xt, W);
+
+def CreateAKNNGraph(W, X, numThreads):
+  # Project the X into the embedding space
+  if(issparse(X)):
+    pX = X * W
+  else:
+    pX = np.matmul(X, W)
 
   # initialize a new index, using a HNSW index on l2 space
   index = nmslib.init(method='hnsw', space='l2')
   index.addDataPointBatch(pX)
-  index.createIndex({'post': 2, 'M':25, 'maxM':25, 'maxM0':50, 'delaunay_type':1}, print_progress=False)
+  index.createIndex({'post': 2, 'M': 15, 'maxM0': 30}, print_progress=False)
+
+  return index
+
+
+
+def ComputeAKNN(index, W, Xt, nnTest, numThreads):
+  # Project the Xt into the embedding space
+  if(issparse(Xt)):
+    pXt = Xt * W
+  else:
+    pXt = np.matmul(Xt, W);
 
   # get the nearest neighbours for all the test datapoint
   neighbors = index.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
@@ -122,8 +137,12 @@ def ComputeKNN(W, X, Xt, nnTest):
   nt = Xt.shape[0]
 
   # Project the X and Xt into the embedding space
-  pX = X * W;
-  pXt = Xt * W;
+  if(issparse(X)):
+    pX = X * W;
+    pXt = Xt * W;
+  else:
+    pX = np.matmul(X, W)
+    pXt = np.matmul(Xt, W);
 
   batchSize = 1000
   numBatch = int(math.ceil(float(nt)/batchSize))
@@ -312,15 +331,20 @@ def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
   print(str(datetime.now()) + " : " + "Training Finished")
 
   maxNNTest = max(nnTestList);
-  numThreads = params["numThreads"];
+  numCores = multiprocessing.cpu_count()
+  numThreads = max(params["numThreads"], int(2*numCores/3));
+
+  # Create K nearest neighbor graph over training examples
+  print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
+  graph = CreateAKNNGraph(W, X, numThreads)
 
   # Compute K nearest neighbors for sampled test examples
   print(str(datetime.now()) + " : " + "Computing Approximate KNN of test examples")
-  KNN = ComputeAKNN(W, X, Xt, maxNNTest, numThreads);
+  KNN = ComputeAKNN(graph, W, Xt, maxNNTest, numThreads);
 
   # Compute K nearest neighbors for sampled train examples
   print(str(datetime.now()) + " : " + "Computing Approximate KNN of training examples")
-  KNN_tr = ComputeAKNN(W, X, X_sam_t, maxNNTest, numThreads);
+  KNN_tr = ComputeAKNN(graph, W, X_sam_t, maxNNTest, numThreads);
 
   for nnt in range(len(nnTestList)):
     nnTest = nnTestList[nnt]

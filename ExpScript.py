@@ -17,14 +17,14 @@ class Data:
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 15,
+  "numThreads": 8,
   "embDim": 100,
   "normalize": 1,
   "lamb": 1,
-  "maxTestSamples": 100000,
-  "maxTrainSamples": 100000}
+  "maxTestSamples": 2000000,
+  "maxTrainSamples": 20000000}
 
-lambdaList = [0.0001, 0.01, 1, 100, 1000]
+lambdaList = [1, 100, 10000]
 nnTestList = [5, 10, 20]
 embDimList = [100]
 
