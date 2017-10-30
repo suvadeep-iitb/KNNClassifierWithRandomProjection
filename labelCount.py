@@ -31,7 +31,13 @@ labelStruct9 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_Xd
 # maxCount and avgCount are unset
 labelStruct10 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_Xdense_L100K.pkl", totalCount=100000, maxCount=0, avgCount=0, resFile='res_relatedSearch_L100K');
 
+# maxCount and avgCount are unset
+labelStruct11 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_X2dense_L5K.pkl", totalCount=5000, maxCount=0, avgCount=0, resFile='res_relatedSearch_X2_L5K');
+
+# maxCount and avgCount are unset
+labelStruct12 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_X2dense_L10K.pkl", totalCount=10000, maxCount=0, avgCount=0, resFile='res_relatedSearch_X2_L10K');
 
 
 
-labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10];
+
+labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12];

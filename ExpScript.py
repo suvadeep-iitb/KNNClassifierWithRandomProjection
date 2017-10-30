@@ -17,18 +17,18 @@ class Data:
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 20,
+  "numThreads": 15,
   "embDim": 100,
   "normalize": 1,
   "lamb": 1,
   "maxTestSamples": 2000000,
   "maxTrainSamples": 20000000}
 
-lambdaList = [0.01, 1, 100, 10000]
-nnTestList = [5, 10, 20]
+lambdaList = [0.000001, 0.0001, 0.01, 1, 100]
+nnTestList = [3, 5, 10]
 embDimList = [100, 500]
 
-for i in [8, 9]:
+for i in [11, 12, 10]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
