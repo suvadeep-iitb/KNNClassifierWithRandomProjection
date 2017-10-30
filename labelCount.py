@@ -20,8 +20,18 @@ labelStruct5 = LabelStruct(fileName="../DataSets/ALOI/aloi_scale.pkl", totalCoun
 labelStruct6 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC.pkl", totalCount=325056, maxCount=10, avgCount=3.192231, resFile='res_wikiLSHTC');
 
 # Taking arbitrary value for maxCount and avgCount
-labelStruct6 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_small.pkl", totalCount=1944958, maxCount=10, avgCount=1.592231, resFile='res_relatedSearch');
+labelStruct7 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_Xdense.pkl", totalCount=1944958, maxCount=10, avgCount=1.592231, resFile='res_relatedSearch');
+
+# maxCount and avgCount are unset
+labelStruct8 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_Xdense_L5K.pkl", totalCount=5000, maxCount=0, avgCount=0, resFile='res_relatedSearch_L5K');
+
+# maxCount and avgCount are unset
+labelStruct9 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_Xdense_L10K.pkl", totalCount=10000, maxCount=0, avgCount=0, resFile='res_relatedSearch_L10K');
+
+# maxCount and avgCount are unset
+labelStruct10 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_Xdense_L100K.pkl", totalCount=100000, maxCount=0, avgCount=0, resFile='res_relatedSearch_L100K');
 
 
 
-labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct6];
+
+labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10];
