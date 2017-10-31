@@ -24,7 +24,7 @@ params = {
   "maxTestSamples": 2000000,
   "maxTrainSamples": 20000000}
 
-lambdaList = [0.1]
+lambdaList = [0.001, 0.01, 0.1, 1, 10]
 nnTestList = [3, 5, 10]
 embDimList = [100]
 
@@ -77,7 +77,7 @@ for i in [2]:
                          nnTestList,
                          params['maxTestSamples'],
                          params['numThreads'])
-      resFile = 'Results/'+resFilePrefix+'_L'+str(ed)+'.pkl'
+      resFile = 'Results/'+resFilePrefix+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
       pickle.dump((testResList, trainResList, nnTestList), open(resFile, 'wb'))
       print('')
       print('')
