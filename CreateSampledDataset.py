@@ -16,6 +16,8 @@ def CreateSampledDataset(data, sampleSize):
   [nt, d] = data.Xt.shape
   [n, l] = data.Y.shape
 
+  np.random.seed(1)
+
   # Sample labels
   perm = np.random.permutation(l)[:sampleSize]
   Ysam = data.Y[:, perm]

@@ -14,6 +14,7 @@ import threading
 from MyQueue import myQueue
 from datetime import datetime
 from KNNPredictor import *
+from sklearn.metrics import mean_squared_error
 
 
 
@@ -26,6 +27,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     self.featureDim = params['featureDim']
     self.labelDim = params['labelDim']
     self.maxTrainSamples = 0
+    self.trainError = -1
 
 
 
@@ -41,7 +43,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     print(str(datetime.now()) + " : " + "Starting regression")
     # Perform label projection and learn regression parameters
-    self.W = self.LearnRandomEmbeddedRegression(X_sam, Y_sam, numThreads)
+    self.W, self.trainError = self.LearnRandomEmbeddedRegression(X_sam, Y_sam, numThreads)
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
@@ -91,8 +93,11 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     # Collect the model parameters into a matrix
     W = np.zeros((D, embDim), dtype=np.float);
     for l in range(embDim):    
-      W[:, l] = resultList[l]
-    return W
+      W[:, l] = resultList[l][0]
+    sumTrainError = sum([resultList[l][1] for l in range(embDim)])
+    print("Total training Error: "+str(sumTrainError))
+
+    return W, sumTrainError
     '''
     # Put the labels into the queue
     queueLock = threading.Lock()
@@ -120,6 +125,11 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     '''
 
 
+  def GetTrainError(self):
+    return self.trainError
+
+
+
 '''
 def TrainWrapper(l, params):
   X = params["X"]
@@ -144,8 +154,10 @@ def TrainWrapper(Z, X, l, C):
                     dual=False, 
                     fit_intercept=False)
   model.fit(X, Z)
-  print("Completed training for "+str(l)+"th label...")
-  return model.coef_
+  trainError = mean_squared_error(Z, model.predict(X))
+  print("Completed training for label: "+str(l)+" . Training error: "+str(trainError))
+
+  return (model.coef_, trainError)
 
 
 
@@ -159,7 +171,7 @@ def CreateAKNNGraph(W, X, numThreads):
   # initialize a new index, using a HNSW index on l2 space
   index = nmslib.init(method='hnsw', space='l2')
   index.addDataPointBatch(pX)
-  index.createIndex({'post': 2, 'M': 15, 'maxM0': 30}, print_progress=False)
+  index.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
 
   return index
 

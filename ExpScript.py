@@ -4,6 +4,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.preprocessing import normalize
 import labelCount as lc
+#from KNNPredictor import KNNPredictor as KNNPredictor
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
 
 
@@ -17,18 +18,19 @@ class Data:
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 3,
+  "numThreads": 10,
   "embDim": 100,
   "normalize": 1,
   "lamb": 1,
-  "maxTestSamples": 2000000,
-  "maxTrainSamples": 20000000}
+  "maxTestSamples": 200000,
+  "maxTrainSamples": 100000}
 
-lambdaList = [0.1]
+lambdaList = [1, 10]
 nnTestList = [3, 5, 10]
 embDimList = [100]
+maxTS = [100000, 18000000]
 
-for i in [2]:
+for i in [7]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -54,31 +56,33 @@ for i in [2]:
     print("Normalization done")
 
   resFilePrefix = labelStruct.resFile;
-  for lam in lambdaList:
-    for ed in embDimList:
-      params["lamb"] = lam
-      params["embDim"] = ed
-      print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
+  for ts in maxTS:
+    params['maxTrainSamples'] = ts
+    for lam in lambdaList:
+      for ed in embDimList:
+        params["lamb"] = lam
+        params["embDim"] = ed
+        print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
 
-      knnPredictor = KNNPredictor(params)
-      knnPredictor.Train(data.X, 
+        knnPredictor = KNNPredictor(params)
+        knnPredictor.Train(data.X, 
                          data.Y, 
                          params['maxTrainSamples'], 
                          params['numThreads'])
-      testResList = knnPredictor.PredictAndComputePrecision(
+        testResList = knnPredictor.PredictAndComputePrecision(
                          data.Xt,
                          data.Yt,
                          nnTestList,
                          params['maxTestSamples'],
-                         params['numThreads'])
-      trainResList = knnPredictor.PredictAndComputePrecision(
+                         max(params['numThreads'], 25))
+        trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
                          nnTestList,
                          params['maxTestSamples'],
-                         params['numThreads'])
-      resFile = 'Results/'+resFilePrefix+'_L'+str(ed)+'.pkl'
-      pickle.dump((testResList, trainResList, nnTestList), open(resFile, 'wb'))
+                         max(params['numThreads'], 25))
+        resFile = 'Results/'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+      pickle.dump((testResList, trainResList, nnTestList, knnPredictor.GetTrainError()), open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
       print('')
       print('')
       print('')

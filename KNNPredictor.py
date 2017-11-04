@@ -6,6 +6,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse
 import math
 import numpy as np
+from sklearn.neighbors import NearestNeighbors
 
 class KNNPredictor:
 
@@ -15,15 +16,25 @@ class KNNPredictor:
 
 
 
-  def Train(self, X, Y):
+  def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
 
-    print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
-    self.graph = nmslib.init(method='hnsw', space='l2')
-    self.graph.addDataPointBatch(X)
-    self.graph.createIndex({'post': 2, 'M': 15, 'maxM0': 30}, print_progress=False)
+    if issparse(X):
+      # The python interface of nmslib library most probably does not support sparse input
+      # Use KDTree of sklearn package
+      print(str(datetime.now()) + " : " + "Creating KNN graph over train examples using sklearn functions")
+      self.graph = NearestNeighbors(n_neighbors = 10, radius = 5, 
+                                    algorithm = 'auto', metric = 'l2',
+                                    n_jobs = numThreads)
+      self.graph.fit(X)
+    else:
+      print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples using HANN")
+      self.graph = nmslib.init(method='hnsw', space='l2')
+      self.graph.addDataPointBatch(X)
+      self.graph.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
+  
     self.Y = Y
 
 
@@ -81,17 +92,19 @@ class KNNPredictor:
 
 
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
-    neighbors = self.graph.knnQueryBatch(Xt, nnTest, num_threads=numThreads)
-  
-    # Create the KNN matrix
-    KNN = np.zeros((Xt.shape[0], nnTest), dtype=np.int64);
-    for i,nei in enumerate(neighbors):
-      if (len(nei[0]) < nnTest):
-        print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
-      KNN[i, :] = nei[0]
+    if (issparse(Xt)):
+      KNN = self.graph.kneighbors(Xt, nnTest, return_distance = False)
+    else:
+      neighbors = self.graph.knnQueryBatch(Xt, nnTest, num_threads=numThreads)
+      # Create the KNN matrix
+      KNN = np.zeros((Xt.shape[0], nnTest), dtype=np.int64);
+      for i,nei in enumerate(neighbors):
+        if (len(nei[0]) < nnTest):
+          print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
+        KNN[i, :] = nei[0]
 
     return KNN
-
+  
 
 
   def PredictAndComputePrecision(self, Xt, Yt, nnTestList, maxTestSamples, numThreads):
@@ -105,7 +118,7 @@ class KNNPredictor:
 
     maxNNTest = max(nnTestList)
     # Compute K nearest neighbors for input data
-    print(str(datetime.now()) + " : " + "Computing Approximate KNN")
+    print(str(datetime.now()) + " : " + "Computing KNN")
     knn = self.ComputeKNN(Xt, maxNNTest, numThreads);
     
     resList = []
@@ -117,8 +130,8 @@ class KNNPredictor:
       # Compute precisions for impute data
       print(str(datetime.now()) + " : " + "Computing precisions for nnTest = " + str(nnTest))
       precision = self.ComputePrecision(predYt, Yt, 5, numThreads)
-      #res.append({'predY': predYt, 'scoreY': scoreYt, 'precision': precision})
-      resList.append({'precision': precision})
+      resList.append({'predY': predYt, 'scoreY': scoreYt, 'precision': precision})
+      #resList.append({'precision': precision})
 
     return resList
 
