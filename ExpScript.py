@@ -52,7 +52,7 @@ nnTestList = [3, 5, 10]
 embDimList = [100]
 maxTS = [100000, 20000000]
 
-for i in [2]:
+for i in [7]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -60,7 +60,7 @@ for i in [2]:
   # For related search data, feature matrix in dense
 
   # Perform initial random permutation of the data
-  print("Random permuting the data ...")
+  print("Randomly permuting the data ...")
   perm = np.random.permutation(data.X.shape[0])
   data.X = data.X[perm, :][:1000, :]
   data.Y = data.Y[perm, :][:1000, :]

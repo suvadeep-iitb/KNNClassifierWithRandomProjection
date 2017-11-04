@@ -129,7 +129,12 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
   def MeanSquaredError(self, X, Y, maxSamples):
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
-    return mean_squared_error(Y*self.labelProjMatrix, X*self.W)
+    Yemb = Ysam*self.labelProjMatrix
+    if(issparse(Xsam)):
+      Xemb = Xsam * self.W
+    else:
+      Xemb = np.matmul(Xsam, self.W)
+    return mean_squared_error(Yemb, Xemb)
 
 
 
