@@ -1,7 +1,7 @@
 #from collections import namedtuple
 import pickle
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
 import labelCount as lc
 #from KNNPredictor import KNNPredictor as KNNPredictor
@@ -16,21 +16,43 @@ class Data:
     self.Xt = Xt
     self.Yt = Yt
 
+def MyNormalize(X, Xt, norm):
+  print("Normalizing data ...")
+  n = X.shape[0]
+  if issparse(X):
+    XXt = vstack([X, Xt]) 
+  else:
+    XXt = np.vstack([X, Xt])
+  assert(norm in ['l2_row', 'l2_col', 'l1_row', 'l1_col', 'max_row', 'max_col'])
+  if 'row' in norm:
+    axis = 1
+  else:
+    axis = 0
+  if 'l2' in norm:
+    nor = 'l2'
+  elif 'l1' in norm:
+    nor = 'l1'
+  else:
+    nor = 'max'
+  XXt = normalize(XXt, norm = nor, axis = axis)
+  print("Normalization done")
+  return XXt[:n, :], XXt[n:, :]
+
 params = {
   "numLearners": 1, # Currently works for only 1
   "numThreads": 10,
   "embDim": 100,
-  "normalize": 1,
+  "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
-  "maxTestSamples": 200000,
+  "maxTestSamples": 1000000,
   "maxTrainSamples": 100000}
 
-lambdaList = [1, 10]
+lambdaList = [1]
 nnTestList = [3, 5, 10]
 embDimList = [100]
-maxTS = [100000, 18000000]
+maxTS = [100000, 20000000]
 
-for i in [7]:
+for i in [2]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -40,20 +62,18 @@ for i in [7]:
   # Perform initial random permutation of the data
   print("Random permuting the data ...")
   perm = np.random.permutation(data.X.shape[0])
-  data.X = data.X[perm, :]
-  data.Y = data.Y[perm, :]
+  data.X = data.X[perm, :][:1000, :]
+  data.Y = data.Y[perm, :][:1000, :]
+
   perm = np.random.permutation(data.Xt.shape[0])
-  data.Xt = data.Xt[perm, :]
-  data.Yt = data.Yt[perm, :]
+  data.Xt = data.Xt[perm, :][:1000, :]
+  data.Yt = data.Yt[perm, :][:1000, :]
 
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]
 
-  if params["normalize"] == 1:
-    print("Normalizing data ...")
-    data.X = normalize(data.X, norm = 'l2', copy = True);
-    data.Xt = normalize(data.Xt, norm = 'l2', copy = True);
-    print("Normalization done")
+  # Normalize data
+  data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
 
   resFilePrefix = labelStruct.resFile;
   for ts in maxTS:
@@ -82,7 +102,14 @@ for i in [7]:
                          params['maxTestSamples'],
                          max(params['numThreads'], 25))
         resFile = 'Results/'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-      pickle.dump((testResList, trainResList, nnTestList, knnPredictor.GetTrainError()), open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
-      print('')
-      print('')
-      print('')
+        pickle.dump({'testRes' : testResList, 
+                     'trainRes' : trainResList, 
+                     'nnTestList' : nnTestList, 
+                     'W' : knnPredictor.W,
+                     'trainSample' : knnPredictor.sampleIndices,
+                     'trainError' : knnPredictor.trainError,
+                     'testError' : knnPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),
+                     'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
+        print('')
+        print('')
+        print('')

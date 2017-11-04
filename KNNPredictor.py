@@ -114,7 +114,7 @@ class KNNPredictor:
 
     # Perform down sampling of input data
     if (maxTestSamples > 0):
-      Xt, Yt = DownSampleData(Xt, Yt, maxTestSamples)
+      Xt, Yt, _ = DownSampleData(Xt, Yt, maxTestSamples)
 
     maxNNTest = max(nnTestList)
     # Compute K nearest neighbors for input data
@@ -174,7 +174,8 @@ def DownSampleData(X, Y, sampleSize):
   else:
     Xnew = X
     Ynew = Y
-  return Xnew, Ynew
+    perm = []
+  return Xnew, Ynew, perm
 
 
 
