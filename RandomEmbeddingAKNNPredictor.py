@@ -45,7 +45,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     print(str(datetime.now()) + " : " + "Starting regression")
     # Perform label projection and learn regression parameters
-    self.W, self.labelProjMatrix, self.trainError = self.LearnRandomEmbeddedRegression(X_sam, Y_sam, numThreads)
+    self.W, self.labelProjMatrix, self.trainError = self.LearnParams(X_sam, Y_sam, numThreads)
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
@@ -75,7 +75,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
 
-  def LearnRandomEmbeddedRegression(self, X, Y, numThreads):
+  def LearnParams(self, X, Y, numThreads):
     L = self.labelDim
     D = self.featureDim
     embDim = self.embDim
