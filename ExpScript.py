@@ -44,10 +44,10 @@ params = {
   "embDim": 100,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
-  "maxTestSamples": 1000000,
+  "maxTestSamples": 2000000,
   "maxTrainSamples": 100000}
 
-lambdaList = [1]
+lambdaList = [10]
 nnTestList = [3, 5, 10]
 embDimList = [100]
 maxTS = [100000, 20000000]
@@ -62,12 +62,12 @@ for i in [7]:
   # Perform initial random permutation of the data
   print("Randomly permuting the data ...")
   perm = np.random.permutation(data.X.shape[0])
-  data.X = data.X[perm, :][:1000, :]
-  data.Y = data.Y[perm, :][:1000, :]
+  data.X = data.X[perm, :]
+  data.Y = data.Y[perm, :]
 
   perm = np.random.permutation(data.Xt.shape[0])
-  data.Xt = data.Xt[perm, :][:1000, :]
-  data.Yt = data.Yt[perm, :][:1000, :]
+  data.Xt = data.Xt[perm, :]
+  data.Yt = data.Yt[perm, :]
 
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]

@@ -114,7 +114,7 @@ class KNNPredictor:
 
     # Perform down sampling of input data
     if (maxTestSamples > 0):
-      Xt, Yt, _ = DownSampleData(Xt, Yt, maxTestSamples)
+      Xt, Yt, testSample = DownSampleData(Xt, Yt, maxTestSamples)
 
     maxNNTest = max(nnTestList)
     # Compute K nearest neighbors for input data
@@ -130,7 +130,7 @@ class KNNPredictor:
       # Compute precisions for impute data
       print(str(datetime.now()) + " : " + "Computing precisions for nnTest = " + str(nnTest))
       precision = self.ComputePrecision(predYt, Yt, 5, numThreads)
-      resList.append({'predY': predYt, 'scoreY': scoreYt, 'precision': precision})
+      resList.append({'Y': Yt, 'predY': predYt, 'scoreY': scoreYt, 'precision': precision, 'testSample': testSample})
       #resList.append({'precision': precision})
 
     return resList
