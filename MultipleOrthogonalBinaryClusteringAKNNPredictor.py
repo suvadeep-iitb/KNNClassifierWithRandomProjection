@@ -1,12 +1,14 @@
 import numpy as np
 from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse
+from scipy.optimize import minimize
 import pickle
 import nmslib
 import math
 from liblinearutil import *
 from datetime import datetime
 from RandomEmbeddingAKNNPredictor import *
-import tensorflow as tf
+from numpy.linalg import norm
+#import tensorflow as tf
 
 
 class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
@@ -27,38 +29,22 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
     self.trainError = -1
     self.sampleIndices = []
 
-    self.labelProjMatrix = tf.Variable(shape=[self.labelDim, self.embDim],
-                                       initializer=tf.truncated_normal_initializer(stddev=0.5),
-                                       trainable=True,
-                                       name='LabelProjMatrix')
-    self.featureProjMatrix = tf.Variable(shape=[self.featureDim, self.embDim],
-                                         initializer=tf.truncated_normal_initializer(),
-                                         trainable=True,
-                                         name='FeatureProjMatrix')
-
-    self.inputLabelVector = tf.Placeholder(shape=[self.batchSize, self.maxActiveLabels],
-                                     dtype=tf.int64,
-                                     name='InputLabelPlaceholder')
-    self.validLabelMusk = tf.Placeholder(shape=[self.batchSize, self.maxActiveLabels],
-                                         dtype=tf.float32,
-                                         name='ValidLabelMusk')
-
-    activeLabels = tf.embedding_lookup(self.labelProjMatrix, self.inputLabelVector)
-    self.projectedLabelVector = tf.reduced_sum(tf.multiply(activeLabels, tf.expand_dims(self.validLabelMusk, axis=-1)), axis=1)
-
-    if(self.isSparse):
-      self.inputFeatureValue = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
-                                              dtype=tf.float32,
-                                              name='InputFeatureValuePlaceholder')
-      self.inputFeatureIndex = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
-                                              dtype=tf.int64,
-                                              name='InputFeatureIndexPlaceholder')
-      activeFeatures = tf.embedding_lookup(self.featureProjMatrix, self.inputFeatureIndex)
-      self.projectedFeatureVector = tf.reduced_sum(tf.multiply(activeFeatures, tf.expand_dims(self.inputFeatureValue, axis=-1)), axis=1)
+  def LearnParams(self, X, Y):
+    if (issparse(X)):
+      self.objFunction = lambda W, F: np.sum(np.amax(np.multiply((X*W),(Y*F)) - 1, 0))
+                                      + self.mu1 * norm(np.sum(F, axis=0), 1)
+                                      + self.mu2 * GetOrthogonalityConstraint(F)
+                                      + self.mu3 * (norm(W)**2)
     else:
-      self.inputFeatureVector = tf.Placeholder(shape=[self.batchSize, self.featureDim], 
-                                             dtye=tf.float32,
-                                             name='InputFeaturePlaceholder')
-      self.projectedFeatureVector = tf.matmul(self.inputFeatureVector, self.featureProjMatrix)
+      self.objFunction = lambda W, F: np.sum(np.amax(np.multiply(np.matmul(X,W),np.matmul(Y,F)) - 1, 0))
+                                      + self.mu1 * norm(np.sum(F, axis=0), 1)
+                                      + self.mu2 * GetOrthogonalityConstraint(F)
+                                      + self.mu3 * (norm(W)**2)
 
+    W0 = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim)
+    F0 = GenerateInitialLabelProjectionMatrix(self.labelDim, self.embDim)
 
+  def GetOrthogonalityConstraint(F):
+    FTF = np.matmul(np.transpose(F), F)
+    np.fill_diagonal(FTF, 0)
+    return np.sum(FTF)
