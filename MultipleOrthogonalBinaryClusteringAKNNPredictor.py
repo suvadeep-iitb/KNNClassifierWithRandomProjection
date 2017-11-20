@@ -44,7 +44,7 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
                                          name='ValidLabelMusk')
 
     activeLabels = tf.embedding_lookup(self.labelProjMatrix, self.inputLabelVector)
-    self.projectedLabel = tf.reduced_sum(tf.multiply(activeLabels, tf.expand_dims(self.validLabelMusk, axis=-1)), axis=1)
+    self.projectedLabelVector = tf.reduced_sum(tf.multiply(activeLabels, tf.expand_dims(self.validLabelMusk, axis=-1)), axis=1)
 
     if(self.isSparse):
       self.inputFeatureValue = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
@@ -53,12 +53,12 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
       self.inputFeatureIndex = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
                                               dtype=tf.int64,
                                               name='InputFeatureIndexPlaceholder')
-      self.validFeatureMusk = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
-                                             dtype=tf.float32,
-                                             name='ValidFeatureMusk')
+      activeFeatures = tf.embedding_lookup(self.featureProjMatrix, self.inputFeatureIndex)
+      self.projectedFeatureVector = tf.reduced_sum(tf.multiply(activeFeatures, tf.expand_dims(self.inputFeatureValue, axis=-1)), axis=1)
     else:
       self.inputFeatureVector = tf.Placeholder(shape=[self.batchSize, self.featureDim], 
-                                         dtye=tf.float32,
-                                         name='InputFeaturePlaceholder')
+                                             dtye=tf.float32,
+                                             name='InputFeaturePlaceholder')
+      self.projectedFeatureVector = tf.matmul(self.inputFeatureVector, self.featureProjMatrix)
 
 
