@@ -18,8 +18,47 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
     self.mu3 = params['mu3']
     self.featureDim = params['featureDim']
     self.labelDim = params['labelDim']
+    self.batchSize = params['batchSize']
     self.maxTrainSamples = 0
+    self.seed = params['seed']
+    self.isSparse = params['isSparse']
+    self.maxActiveFeatures = params['maxActiveFeatures']
+    self.maxActiveLabels = params['maxActiveLabels']
     self.trainError = -1
     self.sampleIndices = []
 
-    self.labelProjMatrix = tf.Variable([self.labelDim, self.embDim])
+    self.labelProjMatrix = tf.Variable(shape=[self.labelDim, self.embDim],
+                                       initializer=tf.truncated_normal_initializer(stddev=0.5),
+                                       trainable=True,
+                                       name='LabelProjMatrix')
+    self.featureProjMatrix = tf.Variable(shape=[self.featureDim, self.embDim],
+                                         initializer=tf.truncated_normal_initializer(),
+                                         trainable=True,
+                                         name='FeatureProjMatrix')
+
+    self.inputLabelVector = tf.Placeholder(shape=[self.batchSize, self.maxActiveLabels],
+                                     dtype=tf.int64,
+                                     name='InputLabelPlaceholder')
+    self.validLabelMusk = tf.Placeholder(shape=[self.batchSize, self.maxActiveLabels],
+                                         dtype=tf.float32,
+                                         name='ValidLabelMusk')
+
+    activeLabels = tf.embedding_lookup(self.labelProjMatrix, self.inputLabelVector)
+    self.projectedLabel = tf.reduced_sum(tf.multiply(activeLabels, tf.expand_dims(self.validLabelMusk, axis=-1)), axis=1)
+
+    if(self.isSparse):
+      self.inputFeatureValue = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
+                                              dtype=tf.float32,
+                                              name='InputFeatureValuePlaceholder')
+      self.inputFeatureIndex = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
+                                              dtype=tf.int64,
+                                              name='InputFeatureIndexPlaceholder')
+      self.validFeatureMusk = tf.Placeholder(shape=[self.batchSize, self.maxActiveFeatures],
+                                             dtype=tf.float32,
+                                             name='ValidFeatureMusk')
+    else:
+      self.inputFeatureVector = tf.Placeholder(shape=[self.batchSize, self.featureDim], 
+                                         dtye=tf.float32,
+                                         name='InputFeaturePlaceholder')
+
+
