@@ -32,7 +32,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
 
-  def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1):
+  def Train(self, X, Y, itr = 10, maxTrainSamples = 0, numThreads = 1):
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
 
@@ -45,7 +45,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     print(str(datetime.now()) + " : " + "Starting regression")
     # Perform label projection and learn regression parameters
-    self.W, self.labelProjMatrix, self.trainError = self.LearnParams(X_sam, Y_sam, numThreads)
+    self.LearnParams(X_sam, Y_sam, numThreads, itr)
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
@@ -75,7 +75,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
 
-  def LearnParams(self, X, Y, numThreads):
+  def LearnParams(self, X, Y, itr, numThreads):
     L = self.labelDim
     D = self.featureDim
     embDim = self.embDim
@@ -98,8 +98,11 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
       W[:, l] = resultList[l][0]
     avgTrainError = sum([resultList[l][1] for l in range(embDim)])/embDim
     print("Total training Error: "+str(avgTrainError))
-
-    return W, R, avgTrainError
+  
+    self.featureProjMatrix = W
+    self.labelProjMatrix = R
+    self.trainError = avgTrainError
+  
     '''
     # Put the labels into the queue
     queueLock = threading.Lock()
