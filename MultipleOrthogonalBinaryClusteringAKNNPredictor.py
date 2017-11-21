@@ -68,13 +68,12 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
   def LearnFeatureProjMatrix(self, X, Y):
     assert(issparse(Y))
     projLabelMatrix = Y*self.labelProjMatrix
-    if (issparse(X)):
-      self.objFunction_W = lambda W: np.sum(np.maximum(np.multiply((X*np.reshape(W, (X.shape[1], -1))), projLabelMatrix) - 1, 0.0))
-                                     + self.mu3 * (norm(W)**2)
-    else:
-      self.objFunction_W = lambda W: np.sum(np.maximum(np.multiply(np.matmul(X,np.reshape(W, (X.shape[1], -1))), projLabelMatrix) - 1, 0.0))
-                                     + self.mu3 * (norm(W)**2)
-    return minimize(self.objFunction_W, self.featureProjMatrix, method='BFGS', jac=False, options={'maxiter': self.innerIter, 'disp': True})
+    return minimize(fun=objFunction_W, 
+                    x0=self.featureProjMatrix.flatten(), 
+                    args=(X, projLabelMatrix, self.mu3), 
+                    method='BFGS', 
+                    jac=True, 
+                    options={'maxiter': self.innerIter, 'disp': True})
 
     
  def LearnLabelProjMatrix(self, X, Y):
@@ -83,21 +82,38 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
       projFeatureMatrix = X*W
     else:
       projFeatureMatrix = np.matmul(X, W)
-    self.objFunction_F = lambda F: np.sum(np.maximum(np.multiply(projFeatureMatrix, (Y*np.reshape(F, (Y.shape[1], -1)))) - 1, 0.0))
-                                   + self.mu1 * norm(np.sum(np.reshape(F, (Y.shape[1], -1)), axis=0), 1)
-                                   + self.mu2 * GetOrthogonalityConstraint(np.reshape(F, (Y.shape[1], -1)))
     bounds = [(-1, 1)]*self.labelProjMatrix.size
-    return minimize(self.objFunction_F, self.featureProjMatrix, method='BFGS', bounds=bounds, jac=False, options={'maxiter': self.innerIter, 'disp': True})
+    return minimize(fun=self.objFunction_F, 
+                    x0=self.featureProjMatrix.flatten(), 
+                    args=(Y, projFeatureMatrix, self.mu1, self.mu2)
+                    method='BFGS', 
+                    bounds=bounds, 
+                    jac=True, 
+                    options={'maxiter': self.innerIter, 'disp': True})
 
 
-  def objFunction_W(x, (X, projLabelMatrix, mu)):
+  def objFunction_W(x, (X, projLabelMatrix, mu3)):
     if (issparse):
       margin = np.multiply((X*np.reshape(x, (X.shape[1], -1))), projLabelMatrix) - 1
-      grad = np.transpose(X) * np.multiply(projLabelMatrix, margin > 0)
+      grad = np.transpose(X) * np.multiply(projLabelMatrix, (margin > 0))
     else:
       margin = np.multiply(np.matmul(X, np.reshape(x, (X.shape[1], -1))), projLabelMatrix) - 1
       grad = np.matmul(np.transpose(X), np.multiply(projLabelMatrix, margin > 0))
-    objVal = np.sum(np.maximum(margin, 0)) + mu * (norm(x)**2)
+    objVal = np.sum(np.maximum(margin, 0)) + mu3 * (norm(x)**2)
+    grad = grad.flatten()
+    grad += 2*mu3*x
+    return objVal, grad
+
+
+  def objFunction_F(x, (Y, projFeatureMatrix, mu1, mu2)):
+    x = np.reshape(x, (Y.shape[1], -1))
+    margin = np.multiply((Y*x), projFeatureMatrix) - 1
+    objVal = np.sum(np.maximum(margin, 0)) 
+             + mu1 * norm(np.sum(x, axis=0), 1)
+             + mu2 * GetOrthogonalityConstraint(x)
+    grad = np.transpose(Y) * np.multiply(projFeatureMatrix, (matgin > 0))
+           + mu1 * np.ones((x.shape[0], 1)) * sign(np.sum(x, axis=0))
+           + mu2 * (x * sign(np.matmul(np.transpose(x), x)) - x)
     return objVal, grad
 
  
