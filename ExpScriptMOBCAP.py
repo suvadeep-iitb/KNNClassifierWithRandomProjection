@@ -39,7 +39,7 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 10,
+  "numThreads": 1,
   "embDim": 100,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "mu12": 1,
@@ -56,7 +56,7 @@ nnTestList = [3, 5, 10]
 embDimList = [20]
 maxTS = [0]
 
-for i in [2]:
+for i in [1]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -66,12 +66,12 @@ for i in [2]:
   # Perform initial random permutation of the data
   print("Randomly permuting the data ...")
   perm = np.random.permutation(data.X.shape[0])
-  data.X = data.X[perm, :][:1000, :]
-  data.Y = data.Y[perm, :][:1000, :]
+  data.X = data.X[perm, :][:100, :100]
+  data.Y = data.Y[perm, :][:100, :100]
 
   perm = np.random.permutation(data.Xt.shape[0])
-  data.Xt = data.Xt[perm, :]
-  data.Yt = data.Yt[perm, :]
+  data.Xt = data.Xt[perm, :][:100, :100]
+  data.Yt = data.Yt[perm, :][:100, :100]
 
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]

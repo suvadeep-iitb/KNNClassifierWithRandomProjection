@@ -52,11 +52,15 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
 
     print(str(datetime.now()) + " : " + "Performing down-sampling")
     # Sample train data for faster training
-    X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
-    self.maxTrainSamples = X_sam.shape[0]
-    self.sampleIndices = samIdx
+    if (maxTrainSamples > 0):
+      X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
+      self.maxTrainSamples = X_sam.shape[0]
+      self.sampleIndices = samIdx
+    else:
+      X_sam = X
+      Y_sam = Y
 
-    print(str(datetime.now()) + " : " + "Starting regression")
+    print(str(datetime.now()) + " : " + "Starting training")
     # Perform label projection and learn regression parameters
     self.featureProjMatrix. self.labelProjMatrix, self.objValue_W, self.objValue_F, self.log = self.LearnParams(X_sam, Y_sam, itr, numThreads)
 
@@ -74,14 +78,14 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
       resFeatureOpt = self.LearnFeatureProjMatrix(X, Y, featureProjMatrix, labelProjMatrix)
       featureProjMatrix = np.reshape(resFeatureOpt.x, (X.shape[1], -1))
       objValue_W = resFeatureOpt.fun
-      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(self.objValue_W))
-      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(self.objValue_W) + "\n"
+      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(objValue_W))
+      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(objValue_W) + "\n"
 
       resLabelOpt = self.LearnLabelProjMatrix(X, Y, featureProjMatrix, labelProjMatrix)
       labelProjMatrix = np.reshape(resLabelOpt.x, (Y.shape[1], -1))
       objValue_F = resLabelOpt.fun
-      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(self.objValue_F))
-      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(self.objValue_F) + "\n"
+      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(objValue_F))
+      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(objValue_F) + "\n"
 
       self.outerIter += 1
       self.SaveParams((featureProjMatrix, labelProjMatrix, objValue_W, objValue_F, log), self.paramSaveFile)
@@ -92,6 +96,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
   def LearnFeatureProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
     assert(issparse(Y))
     projLabelMatrix = Y*labelProjMatrix
+    print(str(X.shape)+' '+str(Y.shape)+' '+str(projLabelMatrix.shape))
     return minimize(fun=objFunction_W, 
                     x0=featureProjMatrix.flatten(), 
                     args=(X, projLabelMatrix, self.mu3), 
@@ -107,7 +112,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     else:
       projFeatureMatrix = np.matmul(X, featureProjMatrix)
     bounds = [(-1, 1)]*labelProjMatrix.size
-    return minimize(fun=self.objFunction_F, 
+    return minimize(fun=objFunction_F, 
                     x0=labelProjMatrix.flatten(), 
                     args=(Y, projFeatureMatrix, self.mu1, self.mu2),
                     method='L-BFGS-B', 
@@ -129,6 +134,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
 def objFunction_W(x, X, projLabelMatrix, mu3):
   embDim = float(projLabelMatrix.shape[1])
   featureDim = float(X.shape[1])
+  print(str(embDim)+' '+str(featureDim)+' '+str(X.shape[0]))
   if (issparse):
     margin = np.multiply((X*np.reshape(x, (X.shape[1], -1))), projLabelMatrix) - 1
     grad = np.transpose(X) * np.multiply(projLabelMatrix, (margin > 0))
@@ -150,9 +156,9 @@ def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2):
   objVal = np.sum(np.maximum(margin, 0))/(Y.shape[0]*embDim) \
            + (mu1/embDim) * norm(np.sum(x, axis=0), 1) \
            + (mu2/(embDim*(embDim-1))) * np.sum(crossProd)
-  grad = np.transpose(Y) * np.multiply(projFeatureMatrix, (matgin > 0))/(Y.shape[0]*embDim) \
-         + (mu1/embDim) * np.ones((x.shape[0], 1)) * sign(np.sum(x, axis=0)) \
-         + (mu2/(embDim*(embDim-1))) * 2 * x * sign(crossProd)
+  grad = np.transpose(Y) * np.multiply(projFeatureMatrix, (margin > 0))/(Y.shape[0]*embDim) \
+         + (mu1/embDim) * np.ones((x.shape[0], 1)) * np.sign(np.sum(x, axis=0)) \
+         + (mu2/(embDim*(embDim-1))) * 2 * x * np.sign(crossProd)
   return objVal, grad.flatten()
 
  

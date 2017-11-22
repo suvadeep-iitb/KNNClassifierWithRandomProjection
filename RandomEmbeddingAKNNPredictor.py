@@ -38,9 +38,13 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     print(str(datetime.now()) + " : " + "Performing down-sampling")
     # Sample train data for faster training
-    X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
-    self.maxTrainSamples = X_sam.shape[0]
-    self.sampleIndices = samIdx
+    if (maxTrainSamples > 0):
+      X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
+      self.maxTrainSamples = X_sam.shape[0]
+      self.sampleIndices = samIdx
+    else:
+      X_sam = X
+      Y_sam = Y
 
     print(str(datetime.now()) + " : " + "Starting regression")
     # Perform label projection and learn regression parameters
