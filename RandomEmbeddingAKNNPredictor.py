@@ -6,7 +6,7 @@ from joblib import Parallel, delayed
 import multiprocessing
 import nmslib
 import math
-from liblinearutil import *
+#from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.svm import LinearSVR
 from MyThread import myThread
@@ -38,14 +38,13 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     print(str(datetime.now()) + " : " + "Performing down-sampling")
     # Sample train data for faster training
-    if (maxTrainSamples > 0):
-      X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
-      self.maxTrainSamples = maxTrainSamples
-      self.sampleIndices = samIdx
+    X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
+    self.maxTrainSamples = X_sam.shape[0]
+    self.sampleIndices = samIdx
 
     print(str(datetime.now()) + " : " + "Starting regression")
     # Perform label projection and learn regression parameters
-    self.LearnParams(X_sam, Y_sam, numThreads, itr)
+    self.LearnParams(X_sam, Y_sam, itr, numThreads)
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")

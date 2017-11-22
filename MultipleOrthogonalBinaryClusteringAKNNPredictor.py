@@ -4,7 +4,7 @@ from scipy.optimize import minimize
 import pickle
 import nmslib
 import math
-from liblinearutil import *
+#from liblinearutil import *
 from datetime import datetime
 from RandomEmbeddingAKNNPredictor import *
 from numpy.linalg import norm
@@ -14,7 +14,7 @@ from datetime import datetime
 #import tensorflow as tf
 
 
-class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
+class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredictor):
 
   def __init__(self, params):
     self.embDim = params['embDim']
@@ -23,12 +23,11 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
     self.mu3 = params['mu3']
     self.featureDim = params['featureDim']
     self.labelDim = params['labelDim']
-    self.batchSize = params['batchSize']
-    self.maxTrainSamples = 0
+    #self.batchSize = params['batchSize']
     self.seed = params['seed']
-    self.isSparse = params['isSparse']
-    self.maxActiveFeatures = params['maxActiveFeatures']
-    self.maxActiveLabels = params['maxActiveLabels']
+    #self.isSparse = params['isSparse']
+    #self.maxActiveFeatures = params['maxActiveFeatures']
+    #self.maxActiveLabels = params['maxActiveLabels']
     self.innerIter = params['innerIter']
     self.paramSaveFile = params['paramSaveFile']
     self.outerIter = 0
@@ -47,22 +46,42 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
     return pickle.load(open(paramSaveFile, 'rb'))
 
 
-  def LearnParams(self, X, Y, itr=1):
-    featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim)
-    labelProjMatrix = GenerateInitialLabelProjectionMatrix(self.labelDim, self.embDim)
+  def Train(self, X, Y, itr = 10, maxTrainSamples = 0, numThreads = 1):
+    assert(X.shape[1] == self.featureDim)
+    assert(Y.shape[1] == self.labelDim)
+
+    print(str(datetime.now()) + " : " + "Performing down-sampling")
+    # Sample train data for faster training
+    X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
+    self.maxTrainSamples = X_sam.shape[0]
+    self.sampleIndices = samIdx
+
+    print(str(datetime.now()) + " : " + "Starting regression")
+    # Perform label projection and learn regression parameters
+    self.featureProjMatrix. self.labelProjMatrix, self.objValue_W, self.objValue_F, self.log = self.LearnParams(X_sam, Y_sam, itr, numThreads)
+
+    # Create K nearest neighbor graph over training examples
+    print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
+    self.graph = CreateAKNNGraph(self.W, X, numThreads)
+    self.Y = Y
+
+
+  def LearnParams(self, X, Y, itr=1, numThreads=1):
+    featureProjMatrix = self.GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim)
+    labelProjMatrix = self.GenerateInitialLabelProjectionMatrix(self.labelDim, self.embDim)
     log = ""
     for i in range(itr):
-      resFeatureOpt = self.LearnFeatureProjMatrix(X, Y, featureProjMatrix)
+      resFeatureOpt = self.LearnFeatureProjMatrix(X, Y, featureProjMatrix, labelProjMatrix)
       featureProjMatrix = np.reshape(resFeatureOpt.x, (X.shape[1], -1))
       objValue_W = resFeatureOpt.fun
-      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W="+str(self.objValue_W))
-      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W="+str(self.objValue_W) + "\n"
+      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(self.objValue_W))
+      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(self.objValue_W) + "\n"
 
-      resLabelOpt = self.LearnLabelProjMatrix(X, Y, labelProjMatrix)
+      resLabelOpt = self.LearnLabelProjMatrix(X, Y, featureProjMatrix, labelProjMatrix)
       labelProjMatrix = np.reshape(resLabelOpt.x, (Y.shape[1], -1))
       objValue_F = resLabelOpt.fun
-      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) "objValue_F="+str(self.objValue_F))
-      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) "objValue_F="+str(self.objValue_F) + "\n"
+      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(self.objValue_F))
+      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(self.objValue_F) + "\n"
 
       self.outerIter += 1
       self.SaveParams((featureProjMatrix, labelProjMatrix, objValue_W, objValue_F, log), self.paramSaveFile)
@@ -70,62 +89,71 @@ class MultipleOrthogonalBinaryAKNNPredictor(RandomEmbeddingAKNNPredictor):
     return featureProjMatrix, labelProjMatrix, objValue_W, objValue_F, log
 
 
-  def LearnFeatureProjMatrix(self, X, Y):
+  def LearnFeatureProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
     assert(issparse(Y))
-    projLabelMatrix = Y*self.labelProjMatrix
+    projLabelMatrix = Y*labelProjMatrix
     return minimize(fun=objFunction_W, 
-                    x0=self.featureProjMatrix.flatten(), 
+                    x0=featureProjMatrix.flatten(), 
                     args=(X, projLabelMatrix, self.mu3), 
                     method='BFGS', 
                     jac=True, 
                     options={'maxiter': self.innerIter, 'disp': True})
 
     
-  def LearnLabelProjMatrix(self, X, Y):
+  def LearnLabelProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
     assert(issparse(Y))
     if (issparse(X)):
-      projFeatureMatrix = X*W
+      projFeatureMatrix = X*featureProjMatrix
     else:
-      projFeatureMatrix = np.matmul(X, W)
-    bounds = [(-1, 1)]*self.labelProjMatrix.size
+      projFeatureMatrix = np.matmul(X, featureProjMatrix)
+    bounds = [(-1, 1)]*labelProjMatrix.size
     return minimize(fun=self.objFunction_F, 
-                    x0=self.featureProjMatrix.flatten(), 
-                    args=(Y, projFeatureMatrix, self.mu1, self.mu2)
-                    method='BFGS', 
+                    x0=labelProjMatrix.flatten(), 
+                    args=(Y, projFeatureMatrix, self.mu1, self.mu2),
+                    method='L-BFGS-B', 
                     bounds=bounds, 
                     jac=True, 
                     options={'maxiter': self.innerIter, 'disp': True})
 
 
-  def objFunction_W(x, (X, projLabelMatrix, mu3)):
-    if (issparse):
-      margin = np.multiply((X*np.reshape(x, (X.shape[1], -1))), projLabelMatrix) - 1
-      grad = np.transpose(X) * np.multiply(projLabelMatrix, (margin > 0))
-    else:
-      margin = np.multiply(np.matmul(X, np.reshape(x, (X.shape[1], -1))), projLabelMatrix) - 1
-      grad = np.matmul(np.transpose(X), np.multiply(projLabelMatrix, (margin > 0)))
-    objVal = np.sum(np.maximum(margin, 0)) + mu3 * (norm(x)**2)
-    grad = grad.flatten() + 2 * mu3 * x
-    return objVal, grad
-
-
-  def objFunction_F(x, (Y, projFeatureMatrix, mu1, mu2)):
-    x = np.reshape(x, (Y.shape[1], -1))
-    margin = np.multiply((Y*x), projFeatureMatrix) - 1
-    crossProd = np.matmul(np.transpose(x), x)
-    np.fill_diagonal(crossProd, 0)
-    objVal = np.sum(np.maximum(margin, 0)) 
-             + mu1 * norm(np.sum(x, axis=0), 1)
-             + mu2 * np.sum(crossProd)
-    grad = np.transpose(Y) * np.multiply(projFeatureMatrix, (matgin > 0))
-           + mu1 * np.ones((x.shape[0], 1)) * sign(np.sum(x, axis=0))
-           + mu2 * 2 * x * sign(crossProd)
-    return objVal, grad.flatten()
-
- 
-  def GenerateInitialFeatureProjectionMatrix(nrow, ncol):
+  def GenerateInitialFeatureProjectionMatrix(self, nrow, ncol):
+    np.random.seed(self.seed+1)
     return np.random.randn(nrow, ncol)/math.sqrt(nrow)
 
 
-  def GenerateInitialLabelProjectionMatrix(nrow, ncol):
-    return np.reshape(trunnorm.rvs(-1, 1, size=nrow*ncol), (nrow, ncol))
+  def GenerateInitialLabelProjectionMatrix(self, nrow, ncol):
+    np.random.seed(self.seed+2)
+    return np.reshape(truncnorm.rvs(-1, 1, size=nrow*ncol), (nrow, ncol))
+
+
+def objFunction_W(x, X, projLabelMatrix, mu3):
+  embDim = float(projLabelMatrix.shape[1])
+  featureDim = float(X.shape[1])
+  if (issparse):
+    margin = np.multiply((X*np.reshape(x, (X.shape[1], -1))), projLabelMatrix) - 1
+    grad = np.transpose(X) * np.multiply(projLabelMatrix, (margin > 0))
+  else:
+    margin = np.multiply(np.matmul(X, np.reshape(x, (X.shape[1], -1))), projLabelMatrix) - 1
+    grad = np.matmul(np.transpose(X), np.multiply(projLabelMatrix, (margin > 0)))
+  objVal = np.sum(np.maximum(margin, 0))/(X.shape[0]*embDim) \
+           + (mu3/(embDim*featureDim)) * (norm(x)**2)
+  grad = grad.flatten()/(X.shape[0]*embDim) + 2 * (mu3/(embDim*featureDim)) * x
+  return objVal, grad
+
+
+def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2):
+  embDim = float(projFeatureMatrix.shape[1])
+  x = np.reshape(x, (Y.shape[1], -1))
+  margin = np.multiply((Y*x), projFeatureMatrix) - 1
+  crossProd = np.matmul(np.transpose(x), x)
+  np.fill_diagonal(crossProd, 0)
+  objVal = np.sum(np.maximum(margin, 0))/(Y.shape[0]*embDim) \
+           + (mu1/embDim) * norm(np.sum(x, axis=0), 1) \
+           + (mu2/(embDim*(embDim-1))) * np.sum(crossProd)
+  grad = np.transpose(Y) * np.multiply(projFeatureMatrix, (matgin > 0))/(Y.shape[0]*embDim) \
+         + (mu1/embDim) * np.ones((x.shape[0], 1)) * sign(np.sum(x, axis=0)) \
+         + (mu2/(embDim*(embDim-1))) * 2 * x * sign(crossProd)
+  return objVal, grad.flatten()
+
+ 
+
