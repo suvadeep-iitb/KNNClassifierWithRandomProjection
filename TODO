@@ -1,3 +1,4 @@
 1. Support for multi-processing / multi-threading
 2. Support for computing classification accuracy at each embedding dimension
 3. Prediction embedded feature space / embedded label space
+4. Try replacing non-smooth functions by smooth functions
