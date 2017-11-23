@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
-from collections import namedtuple
+#from collections import namedtuple
 import labelCount as lc
 from multiprocessing import Pool
 
@@ -72,9 +72,16 @@ def ReadDataFromRelatedSearchFile(fileName):
 
 
 
-Data = namedtuple("Data", "X Y Xt Yt")
+#Data = namedtuple("Data", "X Y Xt Yt")
+class Data:
+  def __init__(self, X, Y, Xt, Yt):
+    self.X = X
+    self.Y = Y
+    self.Xt = Xt
+    self.Yt = Yt
 
-for i in [1, 2]:
+
+for i in [3, 6]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print('Running for ' + dataFile)
@@ -85,7 +92,7 @@ for i in [1, 2]:
   X, Y = ReadDataFromSVMLightFile(trainFile)
   Xt, Yt = ReadDataFromSVMLightFile(testFile)
 
-  data = Data(X = X, Y = Y, Xt = Xt, Yt = Yt)
+  data = Data(X, Y, Xt, Yt)
   outputFile = filePrefix + '.pkl'
   pickle.dump(data, open(outputFile, 'wb'), pickle.HIGHEST_PROTOCOL)
 
