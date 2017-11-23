@@ -42,7 +42,8 @@ params = {
   "numThreads": 1,
   "embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
-  "mu12": 1,
+  "mu1": 1,
+  "mu2": 1,
   "mu3": 1,
   "innerIter": 1,
   "outerIter": 10,
@@ -50,10 +51,11 @@ params = {
   "maxTestSamples": 2000000,
   "maxTrainSamples": 10000000}
 
-mu12List = [1]
-mu3List = [1]
+mu1List = [0.0001, 0.01, 1, 100, 10000]
+mu2List = [0.0001, 0.01, 1, 100, 10000]
+mu3List = [0.0001, 0.01, 1]
 nnTestList = [3, 5, 10]
-embDimList = [20]
+embDimList = [20, 40]
 maxTS = [0]
 
 for i in [2]:
@@ -82,42 +84,43 @@ for i in [2]:
   resFilePrefix = labelStruct.resFile;
   for ts in maxTS:
     params['maxTrainSamples'] = ts
-    for mu12 in mu12List:
-      for mu3 in mu3List:
-        for ed in embDimList:
-          params["mu1"] = mu12
-          params["mu2"] = mu12
-          params["mu3"] = mu3
-          params["embDim"] = ed
-          params["logFile"] = 'Results/'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu12)+'_MU2'+str(mu12)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
-          print("Running for " + "mu1 = " + str(params["mu1"])  + " mu2 = " + str(params["mu2"]) + " mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
+    for mu1 in mu1List:
+      for mu2 in mu2List:
+        for mu3 in mu3List:
+          for ed in embDimList:
+            params["mu1"] = mu1
+            params["mu2"] = mu2
+            params["mu3"] = mu3
+            params["embDim"] = ed
+            params["logFile"] = 'Results/'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
+            print("Running for " + "mu1 = " + str(params["mu1"])  + " mu2 = " + str(params["mu2"]) + " mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
 
-          knnPredictor = KNNPredictor(params)
-          knnPredictor.Train(data.X, 
-                             data.Y, 
-                             params['outerIter'],
-                             params['maxTrainSamples'], 
-                             params['numThreads'])
-          testResList = knnPredictor.PredictAndComputePrecision(
-                             data.Xt,
-                             data.Yt,
-                             nnTestList,
-                             params['maxTestSamples'],
-                             max(params['numThreads'], 25))
-          trainResList = knnPredictor.PredictAndComputePrecision(
-                             data.X,
-                             data.Y,
-                             nnTestList,
-                             params['maxTestSamples'],
-                             max(params['numThreads'], 25))
-          resFile = 'Results/'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu12)+'_MU2'+str(mu12)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
-          pickle.dump({'testRes' : testResList, 
-                       'trainRes' : trainResList, 
-                       'nnTestList' : nnTestList, 
-                       'featureProjMatrix' : knnPredictor.featureProjMatrix,
-                       'labelProjMatrix' : knnPredictor.labelProjMatrix,
-                       'trainSample' : knnPredictor.sampleIndices,
-                       'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
+            knnPredictor = KNNPredictor(params)
+            knnPredictor.Train(data.X, 
+                               data.Y, 
+                               params['outerIter'],
+                               params['maxTrainSamples'], 
+                               params['numThreads'])
+            testResList = knnPredictor.PredictAndComputePrecision(
+                               data.Xt,
+                               data.Yt,
+                               nnTestList,
+                               params['maxTestSamples'],
+                               max(params['numThreads'], 25))
+            trainResList = knnPredictor.PredictAndComputePrecision(
+                               data.X,
+                               data.Y,
+                               nnTestList,
+                               params['maxTestSamples'],
+                               max(params['numThreads'], 25))
+            resFile = 'Results/'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
+            pickle.dump({'testRes' : testResList, 
+                         'trainRes' : trainResList, 
+                         'nnTestList' : nnTestList, 
+                         'featureProjMatrix' : knnPredictor.featureProjMatrix,
+                         'labelProjMatrix' : knnPredictor.labelProjMatrix,
+                         'trainSample' : knnPredictor.sampleIndices,
+                         'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
           print('')
           print('')
           print('')
