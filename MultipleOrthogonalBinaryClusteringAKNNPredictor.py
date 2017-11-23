@@ -29,14 +29,14 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     #self.maxActiveFeatures = params['maxActiveFeatures']
     #self.maxActiveLabels = params['maxActiveLabels']
     self.innerIter = params['innerIter']
-    self.paramSaveFile = params['paramSaveFile']
+    self.logFile = params['logFile']
     self.outerIter = 0
     self.maxTrainSample = 0
     self.sampleIndices = []
 
   
   def SaveParams(self, params, paramSaveFile):
-    if (self.paramSaveFile):
+    if (paramSaveFile):
       pickle.dump(params, 
                   open(paramSaveFile, 'wb'), 
                   pickle.HIGHEST_PROTOCOL)
@@ -46,51 +46,25 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     return pickle.load(open(paramSaveFile, 'rb'))
 
 
-  def Train(self, X, Y, itr = 10, maxTrainSamples = 0, numThreads = 1):
-    assert(X.shape[1] == self.featureDim)
-    assert(Y.shape[1] == self.labelDim)
-
-    print(str(datetime.now()) + " : " + "Performing down-sampling")
-    # Sample train data for faster training
-    if (maxTrainSamples > 0):
-      X_sam, Y_sam, samIdx = DownSampleData(X, Y, maxTrainSamples)
-      self.maxTrainSamples = X_sam.shape[0]
-      self.sampleIndices = samIdx
-    else:
-      X_sam = X
-      Y_sam = Y
-
-    print(str(datetime.now()) + " : " + "Starting training")
-    # Perform label projection and learn regression parameters
-    self.featureProjMatrix. self.labelProjMatrix, self.objValue_W, self.objValue_F, self.log = self.LearnParams(X_sam, Y_sam, itr, numThreads)
-
-    # Create K nearest neighbor graph over training examples
-    print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
-    self.graph = CreateAKNNGraph(self.W, X, numThreads)
-    self.Y = Y
-
-
   def LearnParams(self, X, Y, itr=1, numThreads=1):
-    featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim, self.seed+1)
-    labelProjMatrix = GenerateInitialLabelProjectionMatrix(self.labelDim, self.embDim, self.seed+2)
-    log = ""
+    self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim, self.seed+1)
+    self.labelProjMatrix = GenerateInitialLabelProjectionMatrix(self.labelDim, self.embDim, self.seed+2)
+    self.log = ""
     for i in range(itr):
-      resFeatureOpt = self.LearnFeatureProjMatrix(X, Y, featureProjMatrix, labelProjMatrix)
-      featureProjMatrix = np.reshape(resFeatureOpt.x, (X.shape[1], -1))
-      objValue_W = resFeatureOpt.fun
-      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(objValue_W))
-      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + " objValue_W=" + str(objValue_W) + "\n"
+      resFeatureOpt = self.LearnFeatureProjMatrix(X, Y, self.featureProjMatrix, self.labelProjMatrix)
+      self.featureProjMatrix = np.reshape(resFeatureOpt.x, (X.shape[1], -1))
+      self.objValue_W = resFeatureOpt.fun
+      print(str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_W = " + str(self.objValue_W))
+      self.log += str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_W = " + str(self.objValue_W) + "\n"
 
-      resLabelOpt = self.LearnLabelProjMatrix(X, Y, featureProjMatrix, labelProjMatrix)
-      labelProjMatrix = np.reshape(resLabelOpt.x, (Y.shape[1], -1))
-      objValue_F = resLabelOpt.fun
-      print(str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(objValue_F))
-      log += str(datetime.now()) + " : " + "Iter=" + str(i+1) + "objValue_F=" + str(objValue_F) + "\n"
+      resLabelOpt = self.LearnLabelProjMatrix(X, Y, self.featureProjMatrix, self.labelProjMatrix)
+      self.labelProjMatrix = np.reshape(resLabelOpt.x, (Y.shape[1], -1))
+      self.objValue_F = resLabelOpt.fun
+      print(str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_F = " + str(self.objValue_F))
+      self.log += str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_F = " + str(self.objValue_F) + "\n"
 
       self.outerIter += 1
-      self.SaveParams((featureProjMatrix, labelProjMatrix, objValue_W, objValue_F, log), self.paramSaveFile)
-
-    return featureProjMatrix, labelProjMatrix, objValue_W, objValue_F, log
+      self.SaveParams((self.featureProjMatrix, self.labelProjMatrix, self.objValue_W, self.objValue_F, self.log), self.logFile)
 
 
   def LearnFeatureProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
@@ -99,7 +73,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     return minimize(fun=objFunction_W, 
                     x0=featureProjMatrix.flatten(), 
                     args=(X, projLabelMatrix, self.mu3), 
-                    method='BFGS', 
+                    method='Newton-CG', 
                     jac=True, 
                     options={'maxiter': self.innerIter, 'disp': True})
 
@@ -127,7 +101,7 @@ def GenerateInitialFeatureProjectionMatrix(nrow, ncol, seed):
 
 def GenerateInitialLabelProjectionMatrix(nrow, ncol, seed):
   np.random.seed(seed)
-  return np.reshape(truncnorm.rvs(-1, 1, size=nrow*ncol), (nrow, ncol))
+  return np.reshape(truncnorm.rvs(-30, 30, size=nrow*ncol), (nrow, ncol))/30
 
 
 def objFunction_W(x, X, projLabelMatrix, mu3):

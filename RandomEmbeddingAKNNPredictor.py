@@ -46,13 +46,13 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
       X_sam = X
       Y_sam = Y
 
-    print(str(datetime.now()) + " : " + "Starting regression")
+    print(str(datetime.now()) + " : " + "Starting training")
     # Perform label projection and learn regression parameters
     self.LearnParams(X_sam, Y_sam, itr, numThreads)
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
-    self.graph = CreateAKNNGraph(self.W, X, numThreads)
+    self.graph = CreateAKNNGraph(self.featureProjMatrix, X, numThreads)
     self.Y = Y
 
 
@@ -60,9 +60,9 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
     # Project the Xt into the embedding space
     if(issparse(Xt)):
-      pXt = Xt * self.W
+      pXt = Xt * self.featureProjMatrix
     else:
-      pXt = np.matmul(Xt, self.W);
+      pXt = np.matmul(Xt, self.featureProjMatrix);
 
     # get the nearest neighbours for all the test datapoint
     neighbors = self.graph.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
@@ -137,9 +137,9 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yemb = Ysam*self.labelProjMatrix
     if(issparse(Xsam)):
-      Xemb = Xsam * self.W
+      Xemb = Xsam * self.featureProjMatrix
     else:
-      Xemb = np.matmul(Xsam, self.W)
+      Xemb = np.matmul(Xsam, self.featureProjMatrix)
     return mean_squared_error(Yemb, Xemb)
 
 

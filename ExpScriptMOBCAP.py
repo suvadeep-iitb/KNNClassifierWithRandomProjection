@@ -40,7 +40,7 @@ def MyNormalize(X, Xt, norm):
 params = {
   "numLearners": 1, # Currently works for only 1
   "numThreads": 1,
-  "embDim": 100,
+  "embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "mu12": 1,
   "mu3": 1,
@@ -66,12 +66,12 @@ for i in [2]:
   # Perform initial random permutation of the data
   print("Randomly permuting the data ...")
   perm = np.random.permutation(data.X.shape[0])
-  data.X = data.X[perm, :][:100, :100]
-  data.Y = data.Y[perm, :][:100, :100]
+  data.X = data.X[perm, :]
+  data.Y = data.Y[perm, :]
 
   perm = np.random.permutation(data.Xt.shape[0])
-  data.Xt = data.Xt[perm, :][:100, :100]
-  data.Yt = data.Yt[perm, :][:100, :100]
+  data.Xt = data.Xt[perm, :]
+  data.Yt = data.Yt[perm, :]
 
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]
@@ -89,7 +89,7 @@ for i in [2]:
           params["mu2"] = mu12
           params["mu3"] = mu3
           params["embDim"] = ed
-          params["paramSaveFile"] = 'Results/'+resFilePrefix+'_log__TS'+str(ts)+'_MU1'+str(mu12)+'_MU2'+str(mu12)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
+          params["logFile"] = 'Results/'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu12)+'_MU2'+str(mu12)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
           print("Running for " + "mu1 = " + str(params["mu1"])  + " mu2 = " + str(params["mu2"]) + " mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
 
           knnPredictor = KNNPredictor(params)
