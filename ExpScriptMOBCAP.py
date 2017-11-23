@@ -56,7 +56,7 @@ nnTestList = [3, 5, 10]
 embDimList = [20]
 maxTS = [0]
 
-for i in [1]:
+for i in [2]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -90,7 +90,7 @@ for i in [1]:
           params["mu3"] = mu3
           params["embDim"] = ed
           params["paramSaveFile"] = 'Results/'+resFilePrefix+'_log__TS'+str(ts)+'_MU1'+str(mu12)+'_MU2'+str(mu12)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
-          print("Running for " + "mu1 = " + str(params["mu1"])  + "mu2 = " + str(params["mu2"]) + "mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
+          print("Running for " + "mu1 = " + str(params["mu1"])  + " mu2 = " + str(params["mu2"]) + " mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
 
           knnPredictor = KNNPredictor(params)
           knnPredictor.Train(data.X, 
