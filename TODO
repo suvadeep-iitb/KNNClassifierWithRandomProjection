@@ -1,8 +1,9 @@
 TODO:
 1. Support for multi-processing / multi-threading
 2. Support for computing classification accuracy at each embedding dimension
-3. Prediction embedded feature space / embedded label space
+3. Prediction on embedded feature space / embedded label space, discrete / continuous
 4. Try replacing non-smooth functions by smooth functions
+5. Better initialization method for label projection matrix
 
 Accuracy to be checked for (observations are based on experiments performed on Wiki10 datasets)
 1. innerIter (=1 is giving better result)
