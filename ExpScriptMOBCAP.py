@@ -51,7 +51,7 @@ params = {
   "maxTestSamples": 2000000,
   "maxTrainSamples": 10000000}
 
-mu1List = [0.0001, 0.01, 1, 100, 10000]
+mu1List = [0.01, 1, 100, 10000]
 mu2List = [0.0001, 0.01, 1, 100, 10000]
 mu3List = [0.0001, 0.01, 1]
 nnTestList = [3, 5, 10]

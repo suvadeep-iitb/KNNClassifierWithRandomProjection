@@ -40,19 +40,19 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 10,
-  "embDim": 100,
+  "numThreads": 1,
+  "embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
-  "maxTestSamples": 2000000,
+  "maxTestSamples": 4000,
   "maxTrainSamples": 100000}
 
-lambdaList = [10]
+lambdaList = [0.1]
 nnTestList = [3, 5, 10]
 embDimList = [100]
-maxTS = [100000, 20000000]
+maxTS = [200000000]
 
-for i in [7]:
+for i in [1]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -101,11 +101,11 @@ for i in [7]:
                          nnTestList,
                          params['maxTestSamples'],
                          max(params['numThreads'], 25))
-        resFile = 'Results/'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+        resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 
                      'trainRes' : trainResList, 
                      'nnTestList' : nnTestList, 
-                     'W' : knnPredictor.W,
+                     'featureProjMatrix' : knnPredictor.featureProjMatrix,
                      'trainSample' : knnPredictor.sampleIndices,
                      'trainError' : knnPredictor.trainError,
                      'testError' : knnPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),
