@@ -1,11 +1,11 @@
 import pickle
 import labelCount as lc
 
-mu1List = [0.01, 1, 100]
-mu2List = [0.01, 1, 100]
-mu3List = [0.01, 1, 100]
+mu1List = [0.0001, 0.01, 1, 100, 10000]
+mu2List = [0.0001, 0.01, 1, 100, 10000]
+mu3List = [0.0001, 0.01, 1]
 nnTestList = [3, 5, 10]
-embDimList = [10, 15, 20]
+embDimList = [20, 40]
 maxTS = [0]
 
 for i in [2]:
@@ -31,7 +31,7 @@ for i in [2]:
                 bestMu2 = mu2
                 bestMu3 = mu3
         print('File: '+labelStruct.fileName+' Emb dim: '+str(ed)+' nnTest: '+str(nnTest))
-        print('Best result found for mu1: '+str(bestMu1)+' mu2: '+str(bestMu2))+' mu3: '+str(bestMu3))
+        print('Best result found for mu1: '+str(bestMu1)+' mu2: '+str(bestMu2)+' mu3: '+str(bestMu3))
         print('Precisions (Test\tTrain):')
         for i in range(5):
           print('\t'+str(bestPrecision[i])+'\t'+str(bestPrecisionTrain[i]))
