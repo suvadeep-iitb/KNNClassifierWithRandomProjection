@@ -10,3 +10,17 @@ Accuracy to be checked for (observations are based on experiments performed on W
 2. outerIter (=10 is giving optimal result)
 3. different initialization for labelProjMatrix (truncnorm(-n, n)/n, larger the value of n upto n=30, better the accuracy)
 4. different ordering of optimization of label projection and feature projection (optimization of feature projection first giving better results)
+
+Observation for non-smooth objective function on Wiki10 datasets
+1. innerIter (=1 is giving better result)
+2. outerIter (=10 is giving optimal result)
+3. different initialization for labelProjMatrix (truncnorm(-n, n)/n, larger the value of n upto n=30, better the accuracy)
+4. optimization of feature projection first giving better results
+
+Observation for smoother objective function (abs has been replaced by square) on Wiki10 datasets
+1. innerIter (=1 is giving better result)
+2. outerIter (=3 is giving optimal result)
+3. different initialization for labelProjMatrix (truncnorm(-n, n)/n, lower the value of n, better the accuracy, n=1 gives good result)
+4. optimization of label projection first giving better results
+
+
