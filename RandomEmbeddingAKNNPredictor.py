@@ -52,18 +52,14 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
-    self.graph = self.CreateAKNNGraph(self.featureProjMatrix, X, numThreads)
+    self.graph = self.CreateAKNNGraph(X, numThreads)
     self.Y = Y
 
 
  
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
-    # Project the Xt into the embedding space
-    if(issparse(Xt)):
-      pXt = Xt * self.featureProjMatrix
-    else:
-      pXt = np.matmul(Xt, self.featureProjMatrix);
-
+    # Get the embedding of Xt 
+    pXt = self.GetFeatureEmbedding(Xt)
     # get the nearest neighbours for all the test datapoint
     neighbors = self.graph.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
   
@@ -76,6 +72,13 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     return AKNN
 
+
+  def GetFeatureEmbedding(self, X):
+    if(issparse(X)):
+      pX = X * self.featureProjMatrix
+    else:
+      pX = np.matmul(X, self.featureProjMatrix);
+    return pX
 
 
   def LearnParams(self, X, Y, itr, numThreads):
@@ -133,18 +136,13 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     '''
 
 
-  def CreateAKNNGraph(self, W, X, numThreads):
-    # Project the X into the embedding space
-    if(issparse(X)):
-      pX = X * W
-    else:
-      pX = np.matmul(X, W)
-
+  def CreateAKNNGraph(self, X, numThreads):
+    # Get the embedding of X
+    pX = self.GetFeatureEmbedding(X)
     # initialize a new index, using a HNSW index on l2 space
     index = nmslib.init(method='hnsw', space='l2')
     index.addDataPointBatch(pX)
     index.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
-
     return index
 
 
@@ -152,10 +150,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
   def MeanSquaredError(self, X, Y, maxSamples):
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yemb = Ysam*self.labelProjMatrix
-    if(issparse(Xsam)):
-      Xemb = Xsam * self.featureProjMatrix
-    else:
-      Xemb = np.matmul(Xsam, self.featureProjMatrix)
+    Xemb = self.GetFeatureEmbedding(Xsam)
     return mean_squared_error(Yemb, Xemb)
 
 

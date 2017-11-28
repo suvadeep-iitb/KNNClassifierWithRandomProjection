@@ -24,3 +24,4 @@ Observation for smoother objective function (abs has been replaced by square) on
 4. optimization of label projection first giving better results
 
 
+*** Performing badly while restruct the embedding to be a {+1, -1} vector on Wiki 10 dataset. Check it for multi-class classification problems
