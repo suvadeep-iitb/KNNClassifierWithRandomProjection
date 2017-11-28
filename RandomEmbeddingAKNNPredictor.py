@@ -21,11 +21,11 @@ from sklearn.metrics import mean_squared_error
 class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
   def __init__(self, params):
-    self.numLearners = params['numLearners']
     self.embDim = params['embDim']
     self.lamb = params['lamb']
     self.featureDim = params['featureDim']
     self.labelDim = params['labelDim']
+    self.seed = params['seed']
     self.maxTrainSamples = 0
     self.trainError = -1
     self.sampleIndices = []
@@ -52,18 +52,14 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
-    self.graph = CreateAKNNGraph(self.featureProjMatrix, X, numThreads)
+    self.graph = self.CreateAKNNGraph(X, numThreads)
     self.Y = Y
 
 
  
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
-    # Project the Xt into the embedding space
-    if(issparse(Xt)):
-      pXt = Xt * self.featureProjMatrix
-    else:
-      pXt = np.matmul(Xt, self.featureProjMatrix);
-
+    # Get the embedding of Xt 
+    pXt = self.GetFeatureEmbedding(Xt, 1)
     # get the nearest neighbours for all the test datapoint
     neighbors = self.graph.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
   
@@ -77,6 +73,13 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     return AKNN
 
 
+  def GetFeatureEmbedding(self, X, numThreads=1):
+    if(issparse(X)):
+      pX = X * self.featureProjMatrix
+    else:
+      pX = np.matmul(X, self.featureProjMatrix);
+    return pX
+
 
   def LearnParams(self, X, Y, itr, numThreads):
     L = self.labelDim
@@ -84,7 +87,8 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     embDim = self.embDim
     C = self.lamb
 
-    # Generate random projection matrix
+    # Generate scheudo-random projection matrix
+    np.random.seed(self.seed)
     R = np.random.randn(L, embDim);
     R[R > 0] = 1 / math.sqrt(embDim)
     R[R < 0] = -1 / math.sqrt(embDim)
@@ -133,13 +137,21 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     '''
 
 
+  def CreateAKNNGraph(self, X, numThreads):
+    # Get the embedding of X
+    pX = self.GetFeatureEmbedding(X, numThreads)
+    # initialize a new index, using a HNSW index on l2 space
+    index = nmslib.init(method='hnsw', space='l2')
+    index.addDataPointBatch(pX)
+    index.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
+    return index
+
+
+
   def MeanSquaredError(self, X, Y, maxSamples):
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yemb = Ysam*self.labelProjMatrix
-    if(issparse(Xsam)):
-      Xemb = Xsam * self.featureProjMatrix
-    else:
-      Xemb = np.matmul(Xsam, self.featureProjMatrix)
+    Xemb = self.GetFeatureEmbedding(Xsam)
     return mean_squared_error(Yemb, Xemb)
 
 
@@ -174,20 +186,6 @@ def TrainWrapper(Z, X, l, C):
   return (model.coef_, trainError)
 
 
-
-def CreateAKNNGraph(W, X, numThreads):
-  # Project the X into the embedding space
-  if(issparse(X)):
-    pX = X * W
-  else:
-    pX = np.matmul(X, W)
-
-  # initialize a new index, using a HNSW index on l2 space
-  index = nmslib.init(method='hnsw', space='l2')
-  index.addDataPointBatch(pX)
-  index.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
-
-  return index
 
 
 
