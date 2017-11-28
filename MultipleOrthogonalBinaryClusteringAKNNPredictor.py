@@ -47,8 +47,8 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
 
 
   def LearnParams(self, X, Y, itr=1, numThreads=1):
-    self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim, self.seed+1)
-    self.labelProjMatrix = GenerateInitialLabelProjectionMatrix(self.labelDim, self.embDim, self.seed+2)
+    self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim, self.seed)
+    self.labelProjMatrix = GenerateInitialLabelProjectionMatrix(self.labelDim, self.embDim, self.seed+1023)
     self.log = ""
     for i in range(itr):
       resLabelOpt = self.LearnLabelProjMatrix(X, Y, self.featureProjMatrix, self.labelProjMatrix)

@@ -5,6 +5,7 @@ from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
 import labelCount as lc
 from MultipleOrthogonalBinaryClusteringAKNNPredictor import MultipleOrthogonalBinaryClusteringAKNNPredictor as KNNPredictor
+from EnsembleKNNPredictor import EnsembleKNNPredictor
 
 
 #Data = namedtuple("Data", "X Y Xt Yt")
@@ -38,24 +39,25 @@ def MyNormalize(X, Xt, norm):
   return XXt[:n, :], XXt[n:, :]
 
 params = {
-  "numLearners": 1, # Currently works for only 1
-  "numThreads": 1,
+  "numLearners": 10, # Currently works for only 1
+  "numThreads": 10,
   "embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "mu1": 1,
   "mu2": 1,
   "mu3": 1,
   "innerIter": 1,
-  "outerIter": 10,
+  "outerIter": 3,
   "seed": 1,
   "maxTestSamples": 2000000,
-  "maxTrainSamples": 10000000}
+  "maxTrainSamples": 10000000,
+  "basePredictor": KNNPredictor}
 
-mu1List = [0.01, 1, 100, 10000]
-mu2List = [0.0001, 0.01, 1, 100, 10000]
-mu3List = [0.0001, 0.01, 1]
-nnTestList = [3, 5, 10]
-embDimList = [20, 40]
+mu1List = [1]
+mu2List = [1]
+mu3List = [1]
+nnTestList = [5, 10, 15, 20]
+embDimList = [10]
 maxTS = [0]
 
 for i in [2]:
@@ -92,10 +94,10 @@ for i in [2]:
             params["mu2"] = mu2
             params["mu3"] = mu3
             params["embDim"] = ed
-            params["logFile"] = 'Results/'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
+            params["logFile"] = ''#'Results/'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
             print("Running for " + "mu1 = " + str(params["mu1"])  + " mu2 = " + str(params["mu2"]) + " mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
 
-            knnPredictor = KNNPredictor(params)
+            knnPredictor = EnsembleKNNPredictor(params)
             knnPredictor.Train(data.X, 
                                data.Y, 
                                params['outerIter'],
@@ -117,9 +119,9 @@ for i in [2]:
             pickle.dump({'testRes' : testResList, 
                          'trainRes' : trainResList, 
                          'nnTestList' : nnTestList, 
-                         'featureProjMatrix' : knnPredictor.featureProjMatrix,
-                         'labelProjMatrix' : knnPredictor.labelProjMatrix,
-                         'trainSample' : knnPredictor.sampleIndices,
+                         #'featureProjMatrix' : knnPredictor.featureProjMatrix,
+                         #'labelProjMatrix' : knnPredictor.labelProjMatrix,
+                         #'trainSample' : knnPredictor.sampleIndices,
                          'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
           print('')
           print('')

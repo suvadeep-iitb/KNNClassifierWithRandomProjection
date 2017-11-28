@@ -21,11 +21,11 @@ from sklearn.metrics import mean_squared_error
 class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
   def __init__(self, params):
-    self.numLearners = params['numLearners']
     self.embDim = params['embDim']
     self.lamb = params['lamb']
     self.featureDim = params['featureDim']
     self.labelDim = params['labelDim']
+    self.seed = params['seed']
     self.maxTrainSamples = 0
     self.trainError = -1
     self.sampleIndices = []
@@ -59,7 +59,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
  
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
     # Get the embedding of Xt 
-    pXt = self.GetFeatureEmbedding(Xt)
+    pXt = self.GetFeatureEmbedding(Xt, 1)
     # get the nearest neighbours for all the test datapoint
     neighbors = self.graph.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
   
@@ -73,7 +73,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     return AKNN
 
 
-  def GetFeatureEmbedding(self, X):
+  def GetFeatureEmbedding(self, X, numThreads=1):
     if(issparse(X)):
       pX = X * self.featureProjMatrix
     else:
@@ -87,7 +87,8 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     embDim = self.embDim
     C = self.lamb
 
-    # Generate random projection matrix
+    # Generate scheudo-random projection matrix
+    np.random.seed(self.seed)
     R = np.random.randn(L, embDim);
     R[R > 0] = 1 / math.sqrt(embDim)
     R[R < 0] = -1 / math.sqrt(embDim)
@@ -138,7 +139,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
   def CreateAKNNGraph(self, X, numThreads):
     # Get the embedding of X
-    pX = self.GetFeatureEmbedding(X)
+    pX = self.GetFeatureEmbedding(X, numThreads)
     # initialize a new index, using a HNSW index on l2 space
     index = nmslib.init(method='hnsw', space='l2')
     index.addDataPointBatch(pX)
