@@ -107,7 +107,7 @@ def GenerateInitialLabelProjectionMatrix(nrow, ncol, seed):
 def objFunction_W(x, X, projLabelMatrix, mu3):
   embDim = float(projLabelMatrix.shape[1])
   featureDim = float(X.shape[1])
-  if (issparse):
+  if (issparse(X)):
     margin = 1 - np.multiply((X*np.reshape(x, (X.shape[1], -1))), projLabelMatrix)
     grad = - np.transpose(X) * np.multiply(projLabelMatrix, (margin > 0))
   else:
