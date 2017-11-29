@@ -15,6 +15,7 @@ from MyQueue import myQueue
 from datetime import datetime
 from KNNPredictor import *
 from sklearn.metrics import mean_squared_error
+from sklearn.neighbors import NearestNeighbors
 
 
 
@@ -62,14 +63,13 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     pXt = self.GetFeatureEmbedding(Xt, 1)
     # get the nearest neighbours for all the test datapoint
     neighbors = self.graph.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
-  
     # Create the KNN matrix
     AKNN = np.zeros((pXt.shape[0], nnTest), dtype=np.int64);
     for i,nei in enumerate(neighbors):
       if (len(nei[0]) < nnTest):
         print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
       AKNN[i, :] = nei[0]
-
+    #AKNN = self.graph.kneighbors(pXt, nnTest, return_distance = False)
     return AKNN
 
 
@@ -144,6 +144,12 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     index = nmslib.init(method='hnsw', space='l2')
     index.addDataPointBatch(pX)
     index.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
+    '''
+    index = NearestNeighbors(n_neighbors = 10, radius = 5, 
+                             algorithm = 'auto', metric = 'l2',
+                             n_jobs = numThreads)
+    index.fit(pX)
+    '''
     return index
 
 

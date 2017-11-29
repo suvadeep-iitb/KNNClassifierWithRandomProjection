@@ -75,7 +75,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
                     args=(X, projLabelMatrix, self.mu3), 
                     method='Newton-CG', 
                     jac=True, 
-                    options={'maxiter': self.innerIter, 'disp': True})
+                    options={'maxiter': self.innerIter, 'disp': False})
 
     
   def LearnLabelProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
@@ -91,7 +91,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
                     method='L-BFGS-B', 
                     bounds=bounds, 
                     jac=True, 
-                    options={'maxiter': self.innerIter, 'disp': True})
+                    options={'maxiter': self.innerIter, 'disp': False})
 
 
 def GenerateInitialFeatureProjectionMatrix(nrow, ncol, seed):
