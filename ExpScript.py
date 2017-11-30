@@ -41,18 +41,20 @@ def MyNormalize(X, Xt, norm):
 params = {
   "numLearners": 1, # Currently works for only 1
   "numThreads": 1,
-  "embDim": 20,
+  "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
-  "maxTestSamples": 4000,
-  "maxTrainSamples": 100000}
+  "seed": 1,
+  "maxTestSamples": 4000000,
+  "maxTrainSamples": 10000000}
 
-lambdaList = [0.1]
+#lambdaList = [0.01, 0.1, 1, 10, 100]
+lambdaList = [1]
 nnTestList = [3, 5, 10]
-embDimList = [100]
-maxTS = [200000000]
+embDimList = [15]
+maxTS = [0]
 
-for i in [1]:
+for i in [5]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -86,21 +88,21 @@ for i in [1]:
 
         knnPredictor = KNNPredictor(params)
         knnPredictor.Train(data.X, 
-                         data.Y, 
-                         params['maxTrainSamples'], 
-                         params['numThreads'])
+                         data.Y,
+                         maxTrainSamples = params['maxTrainSamples'],
+                         numThreads = params['numThreads'])
         testResList = knnPredictor.PredictAndComputePrecision(
                          data.Xt,
                          data.Yt,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 25))
+                         max(params['numThreads'], 15))
         trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 25))
+                         max(params['numThreads'], 15))
         resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 
                      'trainRes' : trainResList, 

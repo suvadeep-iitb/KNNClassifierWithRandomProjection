@@ -39,15 +39,15 @@ def MyNormalize(X, Xt, norm):
   return XXt[:n, :], XXt[n:, :]
 
 params = {
-  "numLearners": 10, # Currently works for only 1
-  "numThreads": 10,
+  "numLearners": 1,
+  "numThreads": 4,
   "embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "mu1": 1,
   "mu2": 1,
   "mu3": 1,
   "innerIter": 1,
-  "outerIter": 3,
+  "outerIter": 5,
   "seed": 1,
   "maxTestSamples": 2000000,
   "maxTrainSamples": 10000000,
@@ -56,11 +56,11 @@ params = {
 mu1List = [1]
 mu2List = [1]
 mu3List = [1]
-nnTestList = [5, 10, 15, 20]
-embDimList = [10]
+nnTestList = [3, 5, 10]
+embDimList = [15]
 maxTS = [0]
 
-for i in [2]:
+for i in [5]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -94,15 +94,15 @@ for i in [2]:
             params["mu2"] = mu2
             params["mu3"] = mu3
             params["embDim"] = ed
-            params["logFile"] = ''#'Results/'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
+            params["logFile"] = ''#'Results/MOBCAP_'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
             print("Running for " + "mu1 = " + str(params["mu1"])  + " mu2 = " + str(params["mu2"]) + " mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
 
             knnPredictor = EnsembleKNNPredictor(params)
             knnPredictor.Train(data.X, 
                                data.Y, 
-                               params['outerIter'],
-                               params['maxTrainSamples'], 
-                               params['numThreads'])
+                               maxTrainSamples = params['maxTrainSamples'], 
+                               numThreads = params['numThreads'],
+                               itr = params['outerIter'])
             testResList = knnPredictor.PredictAndComputePrecision(
                                data.Xt,
                                data.Yt,
@@ -115,7 +115,7 @@ for i in [2]:
                                nnTestList,
                                params['maxTestSamples'],
                                max(params['numThreads'], 25))
-            resFile = 'Results/'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
+            resFile = 'Results/MOBCAP_'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
             pickle.dump({'testRes' : testResList, 
                          'trainRes' : trainResList, 
                          'nnTestList' : nnTestList, 
