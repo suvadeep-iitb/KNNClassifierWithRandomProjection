@@ -180,7 +180,9 @@ def TrainWrapper(l, params):
 
 def TrainWrapper(Z, X, l, C):
   print("Staring training for "+str(l)+"th label...")
-  model = LinearSVR(epsilon=0.0, 
+  model = LinearSVR(epsilon=0.0,
+                    tol=0.000001, 
+                    max_iter=5000,
                     C=C, 
                     loss='squared_epsilon_insensitive', 
                     dual=False, 
