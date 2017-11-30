@@ -75,7 +75,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
                     args=(X, projLabelMatrix, self.mu3), 
                     method='Newton-CG', 
                     jac=True, 
-                    options={'maxiter': self.innerIter, 'disp': True})
+                    options={'maxiter': self.innerIter, 'disp': False})
 
     
   def LearnLabelProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
@@ -91,7 +91,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
                     method='L-BFGS-B', 
                     bounds=bounds, 
                     jac=True, 
-                    options={'maxiter': self.innerIter, 'disp': True})
+                    options={'maxiter': self.innerIter, 'disp': False})
 
 
 def GenerateInitialFeatureProjectionMatrix(nrow, ncol, seed):
@@ -107,7 +107,7 @@ def GenerateInitialLabelProjectionMatrix(nrow, ncol, seed):
 def objFunction_W(x, X, projLabelMatrix, mu3):
   embDim = float(projLabelMatrix.shape[1])
   featureDim = float(X.shape[1])
-  if (issparse):
+  if (issparse(X)):
     margin = 1 - np.multiply((X*np.reshape(x, (X.shape[1], -1))), projLabelMatrix)
     grad = - np.transpose(X) * np.multiply(projLabelMatrix, (margin > 0))
   else:
