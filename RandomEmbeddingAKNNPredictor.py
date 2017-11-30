@@ -33,7 +33,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
 
-  def Train(self, X, Y, itr = 10, maxTrainSamples = 0, numThreads = 1):
+  def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1, itr = 10):
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
 

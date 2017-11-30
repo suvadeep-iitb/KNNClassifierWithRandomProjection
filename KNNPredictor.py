@@ -130,8 +130,8 @@ class KNNPredictor:
       # Compute precisions for impute data
       print(str(datetime.now()) + " : " + "Computing precisions for nnTest = " + str(nnTest))
       precision = self.ComputePrecision(predYt, Yt, 5, numThreads)
-      resList.append({'Y': Yt, 'predY': predYt, 'scoreY': scoreYt, 'precision': precision, 'testSample': testSample})
-      #resList.append({'precision': precision})
+      #resList.append({'Y': Yt, 'predY': predYt, 'scoreY': scoreYt, 'precision': precision, 'testSample': testSample})
+      resList.append({'precision': precision})
 
     return resList
 
