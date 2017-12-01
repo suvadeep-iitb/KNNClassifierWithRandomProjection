@@ -58,14 +58,14 @@ mu1List = [0.01, 1, 100, 10000, 1000000]
 mu2List = [0.000001, 0.0001, 0.01, 1, 100]
 mu3List = [0.0001, 0.01, 1, 100, 10000]
 '''
-mu1List = [10000]
-mu2List = [0.0001]
-mu3List = [0.01]
-nnTestList = [3, 5, 10]
-embDimList = [30]
+mu1List = [1]
+mu2List = [0.01]
+mu3List = [1]
+nnTestList = [10, 15, 20]
+embDimList = [20]
 maxTS = [0]
 
-for i in [5]:
+for i in [2]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)

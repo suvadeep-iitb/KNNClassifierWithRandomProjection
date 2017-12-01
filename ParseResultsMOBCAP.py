@@ -1,14 +1,14 @@
 import pickle
 import labelCount as lc
 
-mu1List = [0.0001, 0.01, 1, 100, 10000]
-mu2List = [0.0001, 0.01, 1, 100, 10000]
-mu3List = [0.0001, 0.01, 1]
+mu1List = [0.000001, 0.0001, 0.01, 1, 100, 10000, 1000000]
+mu2List = [0.000001, 0.0001, 0.01, 1, 100, 10000, 1000000]
+mu3List = [0.000001, 0.0001, 0.01, 1, 100, 10000, 1000000]
 nnTestList = [3, 5, 10]
-embDimList = [20, 40]
+embDimList = [15]
 maxTS = [0]
 
-for i in [2]:
+for i in [5]:
   labelStruct = lc.labelStructs[i]
   resFilePrefix = labelStruct.resFile
   for ts in maxTS:
@@ -22,7 +22,7 @@ for i in [2]:
         for mu1 in mu1List:
           for mu2 in mu2List:
             for mu3 in mu3List:
-              resFile = 'Results/'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
+              resFile = '../Results/MOBCAP_'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
               res = pickle.load(open(resFile, 'rb'))
               if bestPrecision[0] < res['testRes'][nn]['precision'][0]:
                 bestPrecision = res['testRes'][nn]['precision']
