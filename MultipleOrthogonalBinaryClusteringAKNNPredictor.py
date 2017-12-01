@@ -21,6 +21,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     self.mu1 = params['mu1']
     self.mu2 = params['mu2']
     self.mu3 = params['mu3']
+    self.mu4 = params['mu4']
     self.featureDim = params['featureDim']
     self.labelDim = params['labelDim']
     #self.batchSize = params['batchSize']
@@ -87,7 +88,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     bounds = [(-1, 1)]*labelProjMatrix.size
     return minimize(fun=objFunction_F, 
                     x0=labelProjMatrix.flatten(), 
-                    args=(Y, projFeatureMatrix, self.mu1, self.mu2),
+                    args=(Y, projFeatureMatrix, self.mu1, self.mu2, self.mu4),
                     method='L-BFGS-B', 
                     bounds=bounds, 
                     jac=True, 
@@ -119,18 +120,21 @@ def objFunction_W(x, X, projLabelMatrix, mu3):
   return objVal, grad
 
 
-def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2):
+def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2, mu4):
   embDim = float(projFeatureMatrix.shape[1])
+  labelDim = float(Y.shape[1])
   x = np.reshape(x, (Y.shape[1], -1))
   margin = 1 - np.multiply((Y*x), projFeatureMatrix)
   crossProd = np.matmul(np.transpose(x), x)
   np.fill_diagonal(crossProd, 0)
   objVal = np.sum(np.maximum(margin, 0))/(Y.shape[0]*embDim) \
            + (mu1/embDim) * norm(np.sum(x, axis=0), 2) \
-           + (mu2/(embDim*(embDim-1))) * np.sum(np.power(crossProd, 2))
+           + (mu2/(embDim*(embDim-1))) * np.sum(np.power(crossProd, 2)) \
+           - (mu4/(embDim*labelDim)) * (norm(x)**2)
   grad = - np.transpose(Y) * np.multiply(projFeatureMatrix, (margin > 0))/(Y.shape[0]*embDim) \
          + (mu1/embDim) * 2 * np.matmul(np.ones((x.shape[0], 1)), (np.sum(x, axis=0, keepdims=True))) \
-         + (mu2/(embDim*(embDim-1))) * 2 * 2 * np.matmul(x, (crossProd))
+         + (mu2/(embDim*(embDim-1))) * 2 * 2 * np.matmul(x, (crossProd)) \
+         - (mu4/(embDim*labelDim)) * 2 * x
   return objVal, grad.flatten()
 
  

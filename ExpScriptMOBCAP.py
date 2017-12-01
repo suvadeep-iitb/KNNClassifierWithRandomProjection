@@ -46,6 +46,7 @@ params = {
   "mu1": 1,
   "mu2": 1,
   "mu3": 1,
+  "mu4": 0,
   "innerIter": 1,
   "outerIter": 8,
   "seed": 1,
@@ -61,6 +62,7 @@ mu3List = [0.0001, 0.01, 1, 100, 10000]
 mu1List = [1]
 mu2List = [0.01]
 mu3List = [1]
+#mu4List = [0]
 nnTestList = [10, 15, 20]
 embDimList = [20]
 maxTS = [0]
