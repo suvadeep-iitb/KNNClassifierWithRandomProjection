@@ -60,7 +60,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
  
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
     # Get the embedding of Xt 
-    pXt = self.GetFeatureEmbedding(Xt, 1)
+    pXt = self.EmbedFeature(Xt, 1)
     # get the nearest neighbours for all the test datapoint
     neighbors = self.graph.knnQueryBatch(pXt, nnTest, num_threads=numThreads)
     # Create the KNN matrix
@@ -73,12 +73,20 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     return AKNN
 
 
-  def GetFeatureEmbedding(self, X, numThreads=1):
+  def EmbedFeature(self, X, numThreads=1):
     if(issparse(X)):
       pX = X * self.featureProjMatrix
     else:
       pX = np.matmul(X, self.featureProjMatrix);
     return pX
+
+
+  def GetFeatureProjMatrix(self):
+    return self.featureProjMatrix
+
+
+  def GetLabelProjMatrix(self):
+    return self.labelProjMatrix
 
 
   def LearnParams(self, X, Y, itr, numThreads):
@@ -139,7 +147,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
   def CreateAKNNGraph(self, X, numThreads):
     # Get the embedding of X
-    pX = self.GetFeatureEmbedding(X, numThreads)
+    pX = self.EmbedFeature(X, numThreads)
     # initialize a new index, using a HNSW index on l2 space
     index = nmslib.init(method='hnsw', space='l2')
     index.addDataPointBatch(pX)
@@ -157,7 +165,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
   def MeanSquaredError(self, X, Y, maxSamples):
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yemb = Ysam*self.labelProjMatrix
-    Xemb = self.GetFeatureEmbedding(Xsam)
+    Xemb = self.EmbedFeature(Xsam)
     return mean_squared_error(Yemb, Xemb)
 
 
