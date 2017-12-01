@@ -46,7 +46,7 @@ params = {
   "mu1": 1,
   "mu2": 1,
   "mu3": 1,
-  "mu4": 0,
+  "mu4": 1,
   "innerIter": 1,
   "outerIter": 8,
   "seed": 1,
@@ -59,11 +59,11 @@ mu1List = [0.01, 1, 100, 10000, 1000000]
 mu2List = [0.000001, 0.0001, 0.01, 1, 100]
 mu3List = [0.0001, 0.01, 1, 100, 10000]
 '''
-mu1List = [1]
-mu2List = [0.01]
-mu3List = [1]
-#mu4List = [0]
-nnTestList = [10, 15, 20]
+mu1List = [0.01, 1, 100]
+mu2List = [0.01, 1, 100]
+mu3List = [0.01, 1, 100]
+mu4List = [0.01, 1, 100]
+nnTestList = [5, 10, 15, 20]
 embDimList = [20]
 maxTS = [0]
 
@@ -97,39 +97,41 @@ for i in [2]:
       for mu1 in mu1List:
         for mu2 in mu2List:
           for mu3 in mu3List:
-            params["mu1"] = mu1
-            params["mu2"] = mu2
-            params["mu3"] = mu3
-            params["embDim"] = ed
-            params["logFile"] = '../Results/MOBCAP_'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)
-            print("Running for " + "mu1 = " + str(params["mu1"])  + " mu2 = " + str(params["mu2"]) + " mu3 = " + str(params["mu3"]) + " emb_dim = " + str(params["embDim"]));
+            for mu4 in mu4List:
+              params["mu1"] = mu1
+              params["mu2"] = mu2
+              params["mu3"] = mu3
+              params["mu4"] = mu4
+              params["embDim"] = ed
+              params["logFile"] = '../Results/MOBCAP_'+resFilePrefix+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)
+              print("Running for " + "mu1 = " + str(mu1)  + " mu2 = " + str(mu2) + " mu3 = " + str(mu3) + " mu4 = " + str(mu4) + " emb_dim = " + str(params["embDim"]));
 
-            knnPredictor = EnsembleKNNPredictor(params)
-            knnPredictor.Train(data.X, 
-                               data.Y, 
-                               maxTrainSamples = params['maxTrainSamples'], 
-                               numThreads = params['numThreads'],
-                               itr = params['outerIter'])
-            testResList = knnPredictor.PredictAndComputePrecision(
-                               data.Xt,
-                               data.Yt,
-                               nnTestList,
-                               params['maxTestSamples'],
-                               max(params['numThreads'], 15))
-            trainResList = knnPredictor.PredictAndComputePrecision(
-                               data.X,
-                               data.Y,
-                               nnTestList,
-                               params['maxTestSamples'],
-                               max(params['numThreads'], 15))
-            resFile = '../Results/MOBCAP_'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_D'+str(ed)+'.pkl'
-            pickle.dump({'testRes' : testResList, 
-                         'trainRes' : trainResList, 
-                         'nnTestList' : nnTestList, 
-                         'featureProjMatrix' : knnPredictor.GetFeatureProjMatrix(),
-                         'labelProjMatrix' : knnPredictor.GetLabelProjMatrix(),
-                         'trainSample' : knnPredictor.sampleIndices,
-                         'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
-          print('')
-          print('')
-          print('')
+              knnPredictor = EnsembleKNNPredictor(params)
+              knnPredictor.Train(data.X, 
+                                 data.Y, 
+                                 maxTrainSamples = params['maxTrainSamples'], 
+                                 numThreads = params['numThreads'],
+                                 itr = params['outerIter'])
+              testResList = knnPredictor.PredictAndComputePrecision(
+                                 data.Xt,
+                                 data.Yt,
+                                 nnTestList,
+                                 params['maxTestSamples'],
+                                 max(params['numThreads'], 15))
+              trainResList = knnPredictor.PredictAndComputePrecision(
+                                 data.X,
+                                 data.Y,
+                                 nnTestList,
+                                 params['maxTestSamples'],
+                                 max(params['numThreads'], 15))
+              resFile = '../Results/MOBCAP_'+resFilePrefix+'_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)+'.pkl'
+              pickle.dump({'testRes' : testResList, 
+                           'trainRes' : trainResList, 
+                           'nnTestList' : nnTestList, 
+                           'featureProjMatrix' : knnPredictor.GetFeatureProjMatrix(),
+                           'labelProjMatrix' : knnPredictor.GetLabelProjMatrix(),
+                           'trainSample' : knnPredictor.sampleIndices,
+                           'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
+            print('')
+            print('')
+            print('')
