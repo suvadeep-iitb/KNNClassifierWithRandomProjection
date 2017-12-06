@@ -59,10 +59,11 @@ class KNNPredictor:
     nt = KNN.shape[0]
     L = Y.shape[1]
     batchSize = int(math.ceil(float(nt)/numThreads))
-    startIdx = [i*batchSize for i in range(numThreads)]
-    endIdx = [min((i+1)*batchSize, nt) for i in range(numThreads)]
+    numBatches = int(math.ceil(float(nt)/batchSize))
+    startIdx = [i*batchSize for i in range(numBatches)]
+    endIdx = [min((i+1)*batchSize, nt) for i in range(numBatches)]
   
-    numCores = numThreads;
+    numCores = numThreads
     resultList = Parallel(n_jobs = numCores)(delayed(ComputeLabelScoreInner)(Y, KNN[s: e, :], nnTest) for s,e in zip(startIdx, endIdx))
     predYt = vstack([tup[0] for tup in resultList], format='lil')
     scoreYt = vstack([tup[1] for tup in resultList], format='lil')
@@ -79,8 +80,11 @@ class KNNPredictor:
 
     nt, L = Yt.shape
     batchSize = int(math.ceil(float(nt)/numThreads))
-    startIdx = [i*batchSize for i in range(numThreads)]
-    endIdx = [min((i+1)*batchSize, nt) for i in range(numThreads)]
+    numBatches = int(math.ceil(float(nt)/batchSize))
+    startIdx = [i*batchSize for i in range(numBatches)]
+    endIdx = [min((i+1)*batchSize, nt) for i in range(numBatches)]
+    print(str(startIdx))
+    print(str(endIdx))
   
     resultList = Parallel(n_jobs = numThreads)(delayed(ComputePrecisionInner)(predYt[s: e, :], Yt[s: e, :], K) for s,e in zip(startIdx, endIdx))
     precision = np.zeros((K, 1))
