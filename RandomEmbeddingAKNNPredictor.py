@@ -74,7 +74,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
   def EmbedFeature(self, X, numThreads=1):
-    if(issparse(X)):
+    if (issparse(X)):
       pX = X * self.featureProjMatrix
     else:
       pX = np.matmul(X, self.featureProjMatrix);
@@ -165,7 +165,10 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
   def MeanSquaredError(self, X, Y, maxSamples):
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yemb = Ysam*self.labelProjMatrix
-    Xemb = self.EmbedFeature(Xsam)
+    if (issparse(X)):
+      Xemb = Xsam*self.featureProjMatrix
+    else:
+      Xemb = np.matmul(Xsam, self.featureProjMatrix)
     return mean_squared_error(Yemb, Xemb)
 
 

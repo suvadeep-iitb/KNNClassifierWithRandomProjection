@@ -45,13 +45,13 @@ params = {
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
   "seed": 1,
-  "maxTestSamples": 4000000,
-  "maxTrainSamples": 10000000}
+  "maxTestSamples": 50000,
+  "maxTrainSamples": 600000}
 
-#lambdaList = [0.01, 0.1, 1, 10, 100]
-lambdaList = [1]
-nnTestList = [3, 5, 10]
-embDimList = [15]
+lambdaList = [0.0001, 0.001]
+#lambdaList = [1]
+nnTestList = [10, 20]
+embDimList = [20, 50]
 maxTS = [0]
 
 for i in [5]:
@@ -97,20 +97,23 @@ for i in [5]:
                          nnTestList,
                          params['maxTestSamples'],
                          max(params['numThreads'], 15))
+        '''
         trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
                          nnTestList,
                          params['maxTestSamples'],
                          max(params['numThreads'], 15))
+        '''
         resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+        #resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 
-                     'trainRes' : trainResList, 
+                     #'trainRes' : trainResList, 
                      'nnTestList' : nnTestList, 
-                     'featureProjMatrix' : knnPredictor.featureProjMatrix,
-                     'trainSample' : knnPredictor.sampleIndices,
-                     'trainError' : knnPredictor.trainError,
-                     'testError' : knnPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),
+                     #'featureProjMatrix' : knnPredictor.featureProjMatrix,
+                     #'trainSample' : knnPredictor.sampleIndices,
+                     #'trainError' : knnPredictor.trainError,
+                     #'testError' : knnPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),
                      'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
         print('')
         print('')

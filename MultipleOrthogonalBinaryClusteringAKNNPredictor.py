@@ -68,6 +68,14 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
       self.SaveParams((self.featureProjMatrix, self.labelProjMatrix, self.objValue_W, self.objValue_F, self.log), self.logFile)
 
 
+  def EmbedFeature(self, X, numThreads=1):
+    if (issparse(X)):
+      pX = (X * self.featureProjMatrix)
+    else:
+      pX = (np.matmul(X, self.featureProjMatrix))
+    return pX
+
+
   def LearnFeatureProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
     assert(issparse(Y))
     projLabelMatrix = Y*labelProjMatrix
@@ -76,7 +84,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
                     args=(X, projLabelMatrix, self.mu3), 
                     method='Newton-CG', 
                     jac=True, 
-                    options={'maxiter': self.innerIter, 'disp': False})
+                    options={'maxiter': 2*self.innerIter, 'disp': False})
 
     
   def LearnLabelProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
