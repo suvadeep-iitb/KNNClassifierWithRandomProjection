@@ -5,7 +5,7 @@ TODO:
 4. Try replacing non-smooth functions by smooth functions
 5. Better initialization method for label projection matrix
 6. Adding a negative regularization for label projection matrix to the objective funtion to enforce the weights close to +1/-1.
-7. Performing optimization by setting mu2, mu3 = 0 to check the affect of parameter orthogonalization
+7. Performing optimization by setting mu1, mu2 = 0 to check the affect of parameter orthogonalization
 
 Accuracy to be checked for (observations are based on experiments performed on Wiki10 datasets)
 1. innerIter (=1 is giving better result)
@@ -27,6 +27,10 @@ Observation for smoother objective function (abs has been replaced by square) on
 
 Observation for adding negative regularization for label projection matrix
 1. the initial observation is accuracy does not improve at al.
+
+Observation for performing optimization by setting mu1, mu2 = 0
+1. (Initial observation) if either one of mu1 or mu2 is zero, accuracy is close to the best result.
+2. (Initial observation) if both of mu1, mu2 are set to zero, accuracy decreases greatly
 
 
 *** Performing badly while restruct the embedding to be a {+1, -1} vector on Wiki 10 dataset. Check it for multi-class classification problems
