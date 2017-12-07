@@ -4,6 +4,8 @@ TODO:
 3. Prediction on embedded feature space / embedded label space, discrete / continuous
 4. Try replacing non-smooth functions by smooth functions
 5. Better initialization method for label projection matrix
+6. Adding a negative regularization for label projection matrix to the objective funtion to enforce the weights close to +1/-1.
+7. Performing optimization by setting mu2, mu3 = 0 to check the affect of parameter orthogonalization
 
 Accuracy to be checked for (observations are based on experiments performed on Wiki10 datasets)
 1. innerIter (=1 is giving better result)
@@ -22,6 +24,9 @@ Observation for smoother objective function (abs has been replaced by square) on
 2. outerIter (=3 is giving optimal result)
 3. different initialization for labelProjMatrix (truncnorm(-n, n)/n, lower the value of n, better the accuracy, n=1 gives good result)
 4. optimization of label projection first giving better results
+
+Observation for adding negative regularization for label projection matrix
+1. the initial observation is accuracy does not improve at al.
 
 
 *** Performing badly while restruct the embedding to be a {+1, -1} vector on Wiki 10 dataset. Check it for multi-class classification problems

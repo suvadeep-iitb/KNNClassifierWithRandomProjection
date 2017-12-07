@@ -83,8 +83,6 @@ class KNNPredictor:
     numBatches = int(math.ceil(float(nt)/batchSize))
     startIdx = [i*batchSize for i in range(numBatches)]
     endIdx = [min((i+1)*batchSize, nt) for i in range(numBatches)]
-    print(str(startIdx))
-    print(str(endIdx))
   
     resultList = Parallel(n_jobs = numThreads)(delayed(ComputePrecisionInner)(predYt[s: e, :], Yt[s: e, :], K) for s,e in zip(startIdx, endIdx))
     precision = np.zeros((K, 1))
