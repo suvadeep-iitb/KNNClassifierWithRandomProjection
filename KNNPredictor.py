@@ -195,12 +195,12 @@ def SortCooMatrix(M):
       sortedIdx[rowIdx, colIdx] = t[1]
       sortedVal[rowIdx, colIdx] = -t[2]
       colIdx += 1
-    elif (t[0] == rowIdx+1):
-      rowIdx += 1
+    elif (t[0] > rowIdx):
+      rowIdx = t[0]
       sortedIdx[rowIdx, 0] = t[1]
       sortedVal[rowIdx, 0] = -t[2]
       colIdx = 1
     else:
-      assert(false)
+      assert(False)
   return sortedIdx, sortedVal 
 
