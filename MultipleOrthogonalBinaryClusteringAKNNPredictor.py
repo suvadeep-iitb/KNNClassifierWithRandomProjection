@@ -54,20 +54,22 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     self.labelProjMatrix = GenerateInitialLabelProjectionMatrix(X, Y, self.embDim, self.seed+1023)
     self.log = ""
     for i in range(itr):
-      resFeatureOpt = self.LearnFeatureProjMatrix(X, Y, self.featureProjMatrix, self.labelProjMatrix)
-      self.featureProjMatrix = np.reshape(resFeatureOpt.x, (X.shape[1], -1))
-      self.objValue_W = resFeatureOpt.fun
-      print(str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_W = " + str(self.objValue_W))
-      self.log += str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_W = " + str(self.objValue_W) + "\n"
-
       resLabelOpt = self.LearnLabelProjMatrix(X, Y, self.featureProjMatrix, self.labelProjMatrix)
       self.labelProjMatrix = np.reshape(resLabelOpt.x, (Y.shape[1], -1))
       self.objValue_F = resLabelOpt.fun
+      self.grad_F = resLabelOpt.jac
       print(str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_F = " + str(self.objValue_F))
       self.log += str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_F = " + str(self.objValue_F) + "\n"
 
+      resFeatureOpt = self.LearnFeatureProjMatrix(X, Y, self.featureProjMatrix, self.labelProjMatrix)
+      self.featureProjMatrix = np.reshape(resFeatureOpt.x, (X.shape[1], -1))
+      self.objValue_W = resFeatureOpt.fun
+      self.grad_W = resFeatureOpt.jac
+      print(str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_W = " + str(self.objValue_W))
+      self.log += str(datetime.now()) + " : " + "Iter = " + str(i+1) + " objValue_W = " + str(self.objValue_W) + "\n"
+
       self.outerIter += 1
-      self.SaveParams((self.featureProjMatrix, self.labelProjMatrix, self.objValue_W, self.objValue_F, self.log), self.logFile)
+      self.SaveParams((self.featureProjMatrix, self.labelProjMatrix, self.objValue_W, self.objValue_F, self.grad_W, self.grad_F, self.log), self.logFile)
 
 
   def EmbedFeature(self, X, numThreads=1):
@@ -157,20 +159,6 @@ def GenerateCorrelatedLabelProjectionMatrix(X, Y, embDim, seed):
     labelProjMatrix = meanLabelFeature * randProjMatrix / math.sqrt(embDim)
   else:
     labelProjMatrix = np.matmul(meanLabelFeature, randProjMatrix) / math.sqrt(embDim)
-  '''
-  randProjMatrix = np.sign(np.random.randn(labelDim, embDim))
-  batchSize = 10000
-  startIdx = 0
-  endIdx = batchSize
-  labelProjMatrix = np.zeros(labelDim, embDim)
-  while(True):
-    labelProjMatrix[startIdx: endIdx, :] = np.corrcoef(meanLabelFeature[startIdx: endIdx, :], meanLabelFeature) * randProjMatrix
-    if (endIdx < nExamples):
-      startIdx += batchSize
-      endIdx = min(endIdx+batchSize, nExamples)
-    else:
-      break
-  '''
   return labelProjMatrix
 
 
@@ -191,6 +179,23 @@ def objFunction_W(x, X, projLabelMatrix, mu3):
   return objVal, grad.flatten()
 
 
+'''
+def objFunction_W(x, X, projLabelMatrix, mu3):
+  embDim = float(projLabelMatrix.shape[1])
+  featureDim = float(X.shape[1])
+  x = np.reshape(x, (X.shape[1], -1))
+  if (issparse(X)):
+    objVal = - np.sum(np.multiply(X*x, projLabelMatrix)) / (X.shape[0]*embDim)
+    grad = - np.transpose(X) * projLabelMatrix / (X.shape[0]*embDim)
+  else:
+    objVal = - np.sum(np.multiply(np.matmul(X, x), projLabelMatrix)) / (X.shape[0]*embDim)
+    grad = - np.matmul(np.transpose(X), projLabelMatrix) / (X.shape[0]*embDim)
+  objVal += (mu3/(embDim*featureDim)) * (norm(x)**2)
+  grad += 2 * (mu3/(embDim*featureDim)) * x
+  return objVal, grad.flatten()
+'''
+
+
 def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2, mu4):
   embDim = float(projFeatureMatrix.shape[1])
   labelDim = float(Y.shape[1])
@@ -206,7 +211,28 @@ def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2, mu4):
          + (mu1/embDim) * 2 * np.matmul(np.ones((x.shape[0], 1)), (np.sum(x, axis=0, keepdims=True))) \
          + (mu2/(embDim*(embDim-1))) * 2 * 2 * np.matmul(x, (crossProd)) \
          - (mu4/(embDim*labelDim)) * 2 * x
+  #grad[np.logical_and(grad<10.0, grad>0)] = 10.0
+  #grad[np.logical_and(grad>-10.0, grad<0)] = -10.0
   return objVal, grad.flatten()
 
- 
 
+''' 
+def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2, mu4):
+  embDim = float(projFeatureMatrix.shape[1])
+  labelDim = float(Y.shape[1])
+  x = np.reshape(x, (Y.shape[1], -1))
+  crossProd = np.matmul(np.transpose(x), x)
+  np.fill_diagonal(crossProd, 0)
+  objVal = - np.sum(np.multiply(Y*x, projFeatureMatrix)) / (Y.shape[0]*embDim) \
+           + (mu1/embDim) * norm(np.sum(x, axis=0), 2) \
+           + (mu2/(embDim*(embDim-1))) * np.sum(np.power(crossProd, 2)) \
+           - (mu4/(embDim*labelDim)) * (norm(x)**2)
+  grad = - np.transpose(Y) * projFeatureMatrix / (Y.shape[0]*embDim) \
+         + (mu1/embDim) * 2 * np.matmul(np.ones((x.shape[0], 1)), (np.sum(x, axis=0, keepdims=True))) \
+         + (mu2/(embDim*(embDim-1))) * 2 * 2 * np.matmul(x, (crossProd)) \
+         - (mu4/(embDim*labelDim)) * 2 * x
+  #grad[np.logical_and(grad<0.5, grad>0)] = 0.5
+  #grad[np.logical_and(grad>-0.5, grad<0)] = -0.5
+  
+  return objVal, grad.flatten()
+'''
