@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse
+from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse, identity
 from collections import namedtuple
 import pickle
 from joblib import Parallel, delayed
@@ -8,7 +8,7 @@ import nmslib
 import math
 #from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.svm import LinearSVR
+from sklearn.svm import LinearSVR, LinearSVC
 from MyThread import myThread
 import threading
 from MyQueue import myQueue
@@ -113,7 +113,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
       W[:, l] = resultList[l][0]
     avgTrainError = sum([resultList[l][1] for l in range(embDim)])/embDim
     print("Total training Error: "+str(avgTrainError))
-  
+ 
     self.featureProjMatrix = W
     self.labelProjMatrix = R
     self.trainError = avgTrainError
@@ -190,7 +190,7 @@ def TrainWrapper(l, params):
 
 
 def TrainWrapper(Z, X, l, C):
-  print("Staring training for "+str(l)+"th label...")
+  print("Starting training for "+str(l)+"th label...")
   model = LinearSVR(epsilon=0.0,
                     tol=0.000001, 
                     max_iter=5000,
@@ -198,8 +198,8 @@ def TrainWrapper(Z, X, l, C):
                     loss='squared_epsilon_insensitive', 
                     dual=False, 
                     fit_intercept=False)
-  model.fit(X, Z)
-  trainError = mean_squared_error(Z, model.predict(X))
+  model.fit(X, Z.toarray().reshape(-1))
+  trainError = mean_squared_error(Z.toarray().reshape(-1), model.predict(X))
   print("Completed training for label: "+str(l)+" . Training error: "+str(trainError))
 
   return (model.coef_, trainError)

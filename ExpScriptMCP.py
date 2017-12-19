@@ -4,9 +4,7 @@ import numpy as np
 from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
 import labelCount as lc
-#from KNNPredictor import KNNPredictor as KNNPredictor
-#from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
-from OneVsRestEmbeddingAKNNPredictor import OneVsRestEmbeddingAKNNPredictor as KNNPredictor
+from MulticlassPredictor import MulticlassPredictor
 
 
 #Data = namedtuple("Data", "X Y Xt Yt")
@@ -41,20 +39,19 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 30,
+  "numThreads": 40,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
   "seed": 1,
-  "maxTestSamples": 50000,
+  "maxTestSamples": 10000,
   "maxTrainSamples": 600000}
 
 lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
 #lambdaList = [1]
-nnTestList = [3]
 maxTS = [0]
 
-for i in [1, 5, 14]:
+for i in [15, 2]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -80,8 +77,6 @@ for i in [1, 5, 14]:
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]
 
-  embDimList = [data.Y.shape[1]]
-
   # Normalize data
   data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
 
@@ -89,39 +84,33 @@ for i in [1, 5, 14]:
   for ts in maxTS:
     params['maxTrainSamples'] = ts
     for lam in lambdaList:
-      for ed in embDimList:
         params["lamb"] = lam
-        params["embDim"] = ed
         print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
 
-        knnPredictor = KNNPredictor(params)
-        knnPredictor.Train(data.X, 
+        multiclassPredictor = MulticlassPredictor(params)
+        multiclassPredictor.Train(data.X, 
                          data.Y,
                          maxTrainSamples = params['maxTrainSamples'],
                          numThreads = params['numThreads'])
-        testResList = knnPredictor.PredictAndComputePrecision(
+        testRes = multiclassPredictor.PredictAndComputePrecision(
                          data.Xt,
                          data.Yt,
-                         nnTestList,
-                         params['maxTestSamples'],
-                         max(params['numThreads'], 15))
+                         maxTestSamples = params['maxTestSamples'],
+                         numThreads = max(params['numThreads'], 15))
         '''
-        trainResList = knnPredictor.PredictAndComputePrecision(
+        trainRes = multiclassPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
-                         nnTestList,
-                         params['maxTestSamples'],
-                         max(params['numThreads'], 15))
+                         maxTestSamples = params['maxTestSamples'],
+                         numThreads = max(params['numThreads'], 15))
         '''
-        resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-        #resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-        pickle.dump({'testRes' : testResList, 
-                     #'trainRes' : trainResList, 
-                     'nnTestList' : nnTestList, 
-                     #'featureProjMatrix' : knnPredictor.featureProjMatrix,
-                     #'trainSample' : knnPredictor.sampleIndices,
-                     #'trainError' : knnPredictor.trainError,
-                     #'testError' : knnPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),
+        resFile = 'Results/Multiclass_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'.pkl'
+        pickle.dump({'testRes' : testRes,
+                     #'trainRes' : trainRes,
+                     #'paramMatrix' : multiclassPredictor.W,
+                     #'trainSample' : multiclassPredictor.sampleIndices,
+                     #'trainError' : multiclassPredictor.trainError,
+                     #'testError' : multiclassPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),
                      'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
         print('')
         print('')

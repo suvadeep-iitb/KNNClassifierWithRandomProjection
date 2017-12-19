@@ -59,16 +59,18 @@ def ComputePerLabelMargin(filename, data):
     #marginTrainList.append(marginTrain)
     #marginTestList.append(marginTest)
     nExamples = np.sum(data.Y[:, l])
-    totExamples = data.Y.shape[0]
-    meanMarginMatrix[l, :] = np.sum(marginTrain, axis=0)/nExamples
-    stdMarginMatrix[l, :] = np.std(marginTrain, axis=0)*math.sqrt(float(totExamples)/nExamples)
-    skewnessMatrix[l, :] = np.sum(marginTrain>0, axis=0)/float(nExamples)
+    if (nExamples > 0):
+      totExamples = data.Y.shape[0]
+      meanMarginMatrix[l, :] = np.sum(marginTrain, axis=0)/nExamples
+      stdMarginMatrix[l, :] = np.std(marginTrain, axis=0)*math.sqrt(float(totExamples)/nExamples)
+      skewnessMatrix[l, :] = np.sum(marginTrain>0, axis=0)/float(nExamples)
 
     nExamplesTe = np.sum(data.Yt[:, l])
-    totExamplesTe = data.Yt.shape[0]
-    meanMarginMatrixTe[l, :] = np.sum(marginTest, axis=0)/nExamplesTe
-    stdMarginMatrixTe[l, :] = np.std(marginTest, axis=0)*math.sqrt(float(totExamplesTe)/nExamplesTe)
-    skewnessMatrixTe[l, :] = np.sum(marginTest>0, axis=0)/float(nExamplesTe)
+    if (nExamplesTe > 0):
+      totExamplesTe = data.Yt.shape[0]
+      meanMarginMatrixTe[l, :] = np.sum(marginTest, axis=0)/nExamplesTe
+      stdMarginMatrixTe[l, :] = np.std(marginTest, axis=0)*math.sqrt(float(totExamplesTe)/nExamplesTe)
+      skewnessMatrixTe[l, :] = np.sum(marginTest>0, axis=0)/float(nExamplesTe)
 
   res['meanMarginMatrix'] = meanMarginMatrix
   res['stdMarginMatrix'] = stdMarginMatrix
@@ -89,8 +91,8 @@ def LoadData(i):
 
 
 if __name__ == '__main__':
-  data = LoadData(5)
-  resFile = 'Results/MOBCAP_res_aloi_TS0_MU110000_MU20.0001_MU30.01_MU40_D15_IT15.pkl'
+  data = LoadData(2)
+  resFile = 'Results/MOBCAP_res_wiki10_TS0_MU1100_MU2100_MU30.01_MU40_D20_IT5.pkl'
   trainErrors, testErrors = ComputeErrors(resFile, data)
   marginRes = ComputePerLabelMargin(resFile, data)
   marginRes['trainErrors'] = trainErrors
