@@ -33,6 +33,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     #self.maxActiveLabels = params['maxActiveLabels']
     self.innerIter = params['innerIter']
     self.logFile = params['logFile']
+    self.initialFeatureProjMatrixFile = params['initialFeatureProjMatrixFile']
     self.outerIter = 0
     self.maxTrainSample = 0
     self.sampleIndices = []
@@ -50,7 +51,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
 
 
   def LearnParams(self, X, Y, itr=1, numThreads=1):
-    self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim, self.seed)
+    self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim, self.initialFeatureProjMatrixFile, self.seed)
     self.labelProjMatrix = GenerateInitialLabelProjectionMatrix(X, Y, self.embDim, self.seed+1023)
     self.log = ""
     for i in range(itr):
@@ -90,7 +91,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
                     jac=True, 
                     options={'maxiter': self.innerIter, 'disp': False})
 
-    
+ 
   def LearnLabelProjMatrix(self, X, Y, featureProjMatrix, labelProjMatrix):
     assert(issparse(Y))
     if (issparse(X)):
@@ -101,22 +102,33 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     return minimize(fun=objFunction_F, 
                     x0=labelProjMatrix.flatten(), 
                     args=(Y, projFeatureMatrix, self.mu1, self.mu2, self.mu4),
-                    method='L-BFGS-B', 
+                    method='TNC', 
                     bounds=bounds, 
                     jac=True, 
                     options={'maxiter': self.innerIter, 'disp': False})
 
 
-def GenerateInitialFeatureProjectionMatrix(nrow, ncol, seed):
+
+def GenerateInitialFeatureProjectionMatrix(nrow, ncol, filename, seed):
   np.random.seed(seed)
-  return np.random.randn(nrow, ncol)/math.sqrt(nrow)
+  if filename:
+    OvRWeightMatrix = pickle.load(open(filename, 'rb'))
+    assert(OvRWeightMatrix.shape[0] == nrow)
+    R = np.random.randn(OvRWeightMatrix.shape[1], ncol)
+    R[R>0] = 1.0
+    R[R<0] = -1.0
+    return np.matmul(OvRWeightMatrix, R)
+  else:
+    return np.random.randn(nrow, ncol)/math.sqrt(nrow)
+  
 
 
 def GenerateInitialLabelProjectionMatrix(X, Y, embDim, seed):
   np.random.seed(seed)
   nrow = Y.shape[1]
   ncol = embDim
-  return np.sign(np.reshape(truncnorm.rvs(-1, 1, size=nrow*ncol), (nrow, ncol)))
+  thr = 3
+  return (np.reshape(truncnorm.rvs(-thr, thr, size=nrow*ncol), (nrow, ncol)))/thr
 
 
 '''
@@ -133,7 +145,6 @@ def GenerateInitialLabelProjectionMatrix(X, Y, embDim, seed):
   labelProjMatrix[labelProjMatrix>1] = 1.0
   labelProjMatrix[labelProjMatrix<-1] = -1.0
   return labelProjMatrix
-'''
 
 
 def GenerateCorrelatedLabelProjectionMatrix(X, Y, embDim, seed):
@@ -160,7 +171,45 @@ def GenerateCorrelatedLabelProjectionMatrix(X, Y, embDim, seed):
   else:
     labelProjMatrix = np.matmul(meanLabelFeature, randProjMatrix) / math.sqrt(embDim)
   return labelProjMatrix
+'''
 
+
+'''
+def objFunction_W(x, X, projLabelMatrix, mu3):
+  embDim = float(projLabelMatrix.shape[1])
+  featureDim = float(X.shape[1])
+  x = np.reshape(x, (X.shape[1], -1))
+  if (issparse(X)):
+    errorMatrix = X*x - projLabelMatrix
+    objVal = norm(errorMatrix)**2
+    grad = 2 * X.T * errorMatrix
+  else:
+    errorMatrix = np.matmul(X, x) - projLabelMatrix
+    objVal = norm(errorMatrix)**2
+    grad = 2 * np.matmul(X.T, errorMatrix)
+  objVal = objVal/(X.shape[0]*embDim) \
+           + (mu3/(embDim*featureDim)) * (norm(x)**2)
+  grad = grad/(X.shape[0]*embDim) + 2 * (mu3/(embDim*featureDim)) * x
+  return objVal, grad.flatten()
+
+
+def objFunction_F(y, Y, projFeatureMatrix, mu1, mu2, mu4):
+  embDim = float(projFeatureMatrix.shape[1])
+  labelDim = float(Y.shape[1])
+  y = np.reshape(y, (Y.shape[1], -1))
+  errorMatrix = Y*y - projFeatureMatrix
+  crossProd = np.matmul(np.transpose(y), y)
+  np.fill_diagonal(crossProd, 0)
+  objVal = - norm(errorMatrix)**2 / (Y.shape[0]*embDim) \
+           + (mu1/embDim) * norm(np.sum(y, axis=0), 2) \
+           + (mu2/(embDim*(embDim-1))) * np.sum(np.power(crossProd, 2)) \
+           - (mu4/(embDim*labelDim)) * (norm(y)**2)
+  grad = - 2 * Y.T * errorMatrix / (Y.shape[0]*embDim) \
+         + (mu1/embDim) * 2 * np.matmul(np.ones((y.shape[0], 1)), (np.sum(y, axis=0, keepdims=True))) \
+         + (mu2/(embDim*(embDim-1))) * 2 * 2 * np.matmul(y, (crossProd)) \
+         - (mu4/(embDim*labelDim)) * 2 * y
+  return objVal, grad.flatten()
+'''
 
 
 def objFunction_W(x, X, projLabelMatrix, mu3):
@@ -179,22 +228,6 @@ def objFunction_W(x, X, projLabelMatrix, mu3):
   return objVal, grad.flatten()
 
 
-'''
-def objFunction_W(x, X, projLabelMatrix, mu3):
-  embDim = float(projLabelMatrix.shape[1])
-  featureDim = float(X.shape[1])
-  x = np.reshape(x, (X.shape[1], -1))
-  if (issparse(X)):
-    objVal = - np.sum(np.multiply(X*x, projLabelMatrix)) / (X.shape[0]*embDim)
-    grad = - np.transpose(X) * projLabelMatrix / (X.shape[0]*embDim)
-  else:
-    objVal = - np.sum(np.multiply(np.matmul(X, x), projLabelMatrix)) / (X.shape[0]*embDim)
-    grad = - np.matmul(np.transpose(X), projLabelMatrix) / (X.shape[0]*embDim)
-  objVal += (mu3/(embDim*featureDim)) * (norm(x)**2)
-  grad += 2 * (mu3/(embDim*featureDim)) * x
-  return objVal, grad.flatten()
-'''
-
 
 def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2, mu4):
   embDim = float(projFeatureMatrix.shape[1])
@@ -211,12 +244,28 @@ def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2, mu4):
          + (mu1/embDim) * 2 * np.matmul(np.ones((x.shape[0], 1)), (np.sum(x, axis=0, keepdims=True))) \
          + (mu2/(embDim*(embDim-1))) * 2 * 2 * np.matmul(x, (crossProd)) \
          - (mu4/(embDim*labelDim)) * 2 * x
-  #grad[np.logical_and(grad<10.0, grad>0)] = 10.0
-  #grad[np.logical_and(grad>-10.0, grad<0)] = -10.0
+  #temp = 10.0
+  #grad[np.logical_and(grad>-temp, grad<temp)] = temp * np.sign(x[np.logical_and(grad>-temp, grad<temp)])
   return objVal, grad.flatten()
 
 
-''' 
+
+'''
+def objFunction_W(x, X, projLabelMatrix, mu3):
+  embDim = float(projLabelMatrix.shape[1])
+  featureDim = float(X.shape[1])
+  x = np.reshape(x, (X.shape[1], -1))
+  if (issparse(X)):
+    objVal = - np.sum(np.multiply(X*x, projLabelMatrix)) / (X.shape[0]*embDim)
+    grad = - np.transpose(X) * projLabelMatrix / (X.shape[0]*embDim)
+  else:
+    objVal = - np.sum(np.multiply(np.matmul(X, x), projLabelMatrix)) / (X.shape[0]*embDim)
+    grad = - np.matmul(np.transpose(X), projLabelMatrix) / (X.shape[0]*embDim)
+  objVal += (mu3/(embDim*featureDim)) * (norm(x)**2)
+  grad += 2 * (mu3/(embDim*featureDim)) * x
+  return objVal, grad.flatten()
+
+
 def objFunction_F(x, Y, projFeatureMatrix, mu1, mu2, mu4):
   embDim = float(projFeatureMatrix.shape[1])
   labelDim = float(Y.shape[1])
