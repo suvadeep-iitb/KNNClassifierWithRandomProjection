@@ -4,7 +4,8 @@ LabelStruct = namedtuple("LabelStruct", "fileName totalCount maxCount avgCount r
 
 labelStruct0 = LabelStruct(fileName="Toy_Example/bibtex.pkl", totalCount=159, maxCount=17, avgCount=2.4035, resFile='res_bibtex');
 
-labelStruct1 = LabelStruct(fileName="../DataSets/Eurlex/eurlex.pkl", totalCount=3993, maxCount=24, avgCount=5.311153, resFile='res_eurlex');
+#3993
+labelStruct1 = LabelStruct(fileName="../DataSets/Eurlex/eurlex.pkl", totalCount=3786, maxCount=24, avgCount=5.311153, resFile='res_eurlex');
 
 labelStruct2 = LabelStruct(fileName="../DataSets/Wiki10/wiki10.pkl", totalCount=30938, maxCount=30, avgCount=18.641665, resFile='res_wiki10');
 
@@ -40,7 +41,12 @@ labelStruct12 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_X
 # maxCount and avgCount are unset
 labelStruct13 = LabelStruct(fileName="../DataSets/RelatedSearch/related_search_Xdense_L5K_S1.pkl", totalCount=5000, maxCount=0, avgCount=0, resFile='res_relatedSearch_L5K_S1');
 
+labelStruct14 = LabelStruct(fileName="../DataSets/Delicious/delicious.pkl", totalCount=983, maxCount=0, avgCount=0, resFile='res_delicious');
+
+labelStruct15 = LabelStruct(fileName="../DataSets/DeliciousLarge/deliciousLarge_1k.pkl", totalCount=1000, maxCount=0, avgCount=0, resFile='res_deliciousLarge_1k');
+
+labelStruct16 = LabelStruct(fileName="../DataSets/DeliciousLarge/deliciousLarge_5k.pkl", totalCount=5000, maxCount=0, avgCount=0, resFile='res_deliciousLarge_5k');
 
 
 
-labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12, labelStruct13];
+labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12, labelStruct13, labelStruct14, labelStruct15, labelStruct16];
