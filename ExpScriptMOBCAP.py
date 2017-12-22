@@ -74,8 +74,8 @@ def PerformExperiment(p, data):
   pickle.dump({'testRes' : testResList, 
                #'trainRes' : trainResList, 
                'nnTestList' : p['nnTestList'], 
-               'featureProjMatrix' : knnPredictor.GetFeatureProjMatrix(),
-               'labelProjMatrix' : knnPredictor.GetLabelProjMatrix(),
+               #'featureProjMatrix' : knnPredictor.GetFeatureProjMatrix(),
+               #'labelProjMatrix' : knnPredictor.GetLabelProjMatrix(),
                'trainSample' : knnPredictor.sampleIndices,
                'params' : p}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
   print('Finished')
@@ -92,15 +92,20 @@ params = {
   #"mu2": 1,
   #"mu3": 1,
   #"mu4": 1,
-  "innerIter": 2,
+  "innerIter": 4,
   "outerIter": 3,
   "seed": 1,
   "maxTestSamples": 50000,
   #"maxTrainSamples": 600000,
   "basePredictor": KNNPredictor}
-outerIterList = [5, 7, 10]
+outerIterList = [5, 8]
+'''
 mu1List = [0.000001, 0.0001, 0.01, 1]
 mu2List = [1, 100, 10000, 1000000]
+mu3List = [0.0001, 0.01, 1, 100, 10000]
+'''
+mu1List = [0.0001, 0.01, 1, 100, 10000]
+mu2List = [0.01, 1, 100]
 mu3List = [0.0001, 0.01, 1, 100, 10000]
 '''
 mu1List = [1]
@@ -109,11 +114,15 @@ mu3List = [1]
 '''
 
 mu4List = [0]
+nnTestList = [10]
+embDimList = [20, 50]
+'''
 nnTestList = [20]
 embDimList = [50]
+'''
 maxTS = [0]
 
-for i in [14]:
+for i in [1]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)

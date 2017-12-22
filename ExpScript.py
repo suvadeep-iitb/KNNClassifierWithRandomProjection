@@ -41,7 +41,7 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 40,
+  "numThreads": 20,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
@@ -49,15 +49,14 @@ params = {
   "maxTestSamples": 50000,
   "maxTrainSamples": 600000}
 
-lambdaList = [0.1, 100, 100000]
+lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
 #lambdaList = [1]
-nnTestList = [3, 10, 20]
+nnTestList = [15, 20]
 maxTS = [0]
 
-for i in [1, 5, 14]:
+for i in [15, 17]:
   labelStruct = lc.labelStructs[i]
 
-  embDimList = [labelStruct.totalCount]
 
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -82,6 +81,8 @@ for i in [1, 5, 14]:
 
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]
+
+  embDimList = [data.Y.shape[1], 20, 50]
 
   # Normalize data
   data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
