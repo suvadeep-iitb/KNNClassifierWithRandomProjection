@@ -198,8 +198,8 @@ def TrainWrapper(Z, X, l, C):
                     loss='squared_epsilon_insensitive', 
                     dual=False, 
                     fit_intercept=False)
-  model.fit(X, Z.toarray().reshape(-1))
-  trainError = mean_squared_error(Z.toarray().reshape(-1), model.predict(X))
+  model.fit(X, Z.reshape(-1))
+  trainError = mean_squared_error(Z.reshape(-1), model.predict(X))
   print("Completed training for label: "+str(l)+" . Training error: "+str(trainError))
 
   return (model.coef_, trainError)

@@ -113,6 +113,7 @@ def GenerateInitialFeatureProjectionMatrix(nrow, ncol, filename, seed):
   np.random.seed(seed)
   if filename:
     OvRWeightMatrix = pickle.load(open(filename, 'rb'))
+    OvRWeightMatrix = normalize(OvRWeightMatrix, norm='l2', axis=0)
     assert(OvRWeightMatrix.shape[0] == nrow)
     R = np.random.randn(OvRWeightMatrix.shape[1], ncol)
     R[R>0] = 1.0
