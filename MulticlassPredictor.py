@@ -25,10 +25,11 @@ class MulticlassPredictor:
     self.lamb = params['lamb']
     self.featureDim = params['featureDim']
     self.labelDim = params['labelDim']
+    self.itr = params['itr']
     self.sampleIndices = []
 
 
-  def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1, itr = 10):
+  def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1):
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
 
@@ -44,7 +45,7 @@ class MulticlassPredictor:
 
     print(str(datetime.now()) + " : " + "Starting training")
     # Perform label projection and learn regression parameters
-    self.LearnParams(X_sam, Y_sam, itr, numThreads)
+    self.LearnParams(X_sam, Y_sam, self.itr, numThreads)
 
 
   def Predict(self, Xt, numThreads = 1):
