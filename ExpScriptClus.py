@@ -8,6 +8,7 @@ import labelCount as lc
 #from MultipleOrthogonalBinaryClusteringAKNNPredictor import MultipleOrthogonalBinaryClusteringAKNNPredictor as KNNPredictor
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
 from ClusteredKNNPredictor import ClusteredKNNPredictor
+from EnsembleKNNPredictor import EnsembleKNNPredictor
 from joblib import Parallel, delayed
 import multiprocessing
 
@@ -58,18 +59,21 @@ def PerformExperiment(p, data):
   print("Running for train_sam = " + str(ts) + " lambda = " + str(lamb)  + " emb_dim = " + str(ed) + " # clusters = " + str(nc));
 
   knnPredictor = ClusteredKNNPredictor(p)
-  knnPredictor.Train(data.X, 
+  newParam = p.copy()
+  newParam['basePredictor'] = knnPredictor
+  ensembleKNNPredictor = EnsembleKNNPredictor(newParam)
+  ensembleKNNPredictor.Train(data.X, 
                      data.Y, 
                      maxTrainSamples = p['maxTrainSamples'], 
                      numThreads = 1)
-  testResList = knnPredictor.PredictAndComputePrecision(
+  testResList = ensembleKNNPredictor.PredictAndComputePrecision(
                      data.Xt,
                      data.Yt,
                      p["nnTestList"],
                      p['maxTestSamples'],
                      numThreads = 1)
   '''
-  trainResList = knnPredictor.PredictAndComputePrecision(
+  trainResList = ensembleKNNPredictor.PredictAndComputePrecision(
                      data.X,
                      data.Y,
                      p["nnTestList"],
@@ -115,8 +119,8 @@ mu3List = [1]
 mu4List = [0]
 '''
 
-nnTestList = [10, 15, 20]
-embDimList = [10, 20]
+nnTestList = [5, 10, 15]
+embDimList = [100]
 numClustersList = [1, 5, 10]
 lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]
 
