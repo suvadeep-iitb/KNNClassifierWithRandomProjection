@@ -26,11 +26,11 @@ class ClusteredKNNPredictor(KNNPredictor):
       self.predictorList.append(self.basePredictor(newParams))
 
 
+
   def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
-  
      
     print(str(datetime.now()) + " : " + "Peforming clustering")
     self.clusters = self.clusteringAlgo(n_clusters = self.numClusters,
@@ -46,6 +46,7 @@ class ClusteredKNNPredictor(KNNPredictor):
       self.predictorList[cId].Train(X, Y, maxTrainSamples, numThreads)
 
 
+
   def Predict(self, Xt, nnTest, numThreads = 1):
     assert(Xt.shape[1] == self.featureDim)
 
@@ -59,6 +60,7 @@ class ClusteredKNNPredictor(KNNPredictor):
       predYt[np.equal(clusterAssignments, i), :] = predYtsam
       scoreYt[np.equal(clusterAssignments, i),  :] = scoreYtsam
     return predYt, scoreYt
+
 
 
   def PredictAndComputePrecision(self, Xt, Yt, nnTestList, maxTestSamples, numThreads):
@@ -80,6 +82,7 @@ class ClusteredKNNPredictor(KNNPredictor):
       resList.append(res)
     res = self.CombineResults(resList, clusterAssignments, nnTestList)
     return res
+
 
 
   def CombineResults(self, resList, clusterAssignments, nnTestList):
