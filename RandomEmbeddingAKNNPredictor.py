@@ -24,8 +24,6 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
   def __init__(self, params):
     self.embDim = params['embDim']
     self.lamb = params['lamb']
-    self.featureDim = params['featureDim']
-    self.labelDim = params['labelDim']
     self.seed = params['seed']
     self.maxTrainSamples = 0
     self.trainError = -1
@@ -34,8 +32,9 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
   def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1, itr = 10):
-    assert(X.shape[1] == self.featureDim)
-    assert(Y.shape[1] == self.labelDim)
+    assert(X.shape[0] == Y.shape[0])
+    self.featureDim = X.shape[1]
+    self.labelDim = Y.shape[1]
 
     print(str(datetime.now()) + " : " + "Performing down-sampling")
     # Sample train data for faster training
@@ -53,7 +52,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
     # Create K nearest neighbor graph over training examples
     print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples")
-    self.graph = self.CreateAKNNGraph(X, numThreads)
+    self.graph = self.CreateAKNNGraph(X, max(numThreads, 30))
     self.Y = Y
 
 
@@ -102,20 +101,23 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     R[R < 0] = -1 / math.sqrt(embDim)
 
     # Project Y into a lower dimention using random projection matrix
-    Z = Y * R;
+    Z = Y * R
+    del R
 
     # Perform linear regression using liblinear
     resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Z[:, l], X, l, C) for l in range(embDim))
 
-    # Collect the model parameters into a matrix
-    W = np.zeros((D, embDim), dtype=np.float);
-    for l in range(embDim):    
-      W[:, l] = resultList[l][0]
     avgTrainError = sum([resultList[l][1] for l in range(embDim)])/embDim
     print("Total training Error: "+str(avgTrainError))
- 
+
+    # Collect the model parameters into a matrix
+    W = np.reshape(resultList[0][0], (D, 1))
+    del resultList[0]
+    for l in range(embDim-1):
+      W = np.hstack((W, np.reshape(resultList[0][0], (D, 1))))
+      del resultList[0]
     self.featureProjMatrix = W
-    self.labelProjMatrix = R
+    #self.labelProjMatrix = R
     self.trainError = avgTrainError
   
     '''
