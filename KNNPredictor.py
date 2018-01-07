@@ -11,15 +11,14 @@ from sklearn.neighbors import NearestNeighbors
 class KNNPredictor:
 
   def __init__(self, params):
-    self.featureDim = params['featureDim']
-    self.labelDim = params['labelDim']
+    pass
 
 
 
   def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
-    assert(X.shape[1] == self.featureDim)
-    assert(Y.shape[1] == self.labelDim)
+    self.featureDim = X.shape[1]
+    self.labelDim = Y.shape[1]
 
     if issparse(X):
       # The python interface of nmslib library most probably does not support sparse input

@@ -23,15 +23,14 @@ class MulticlassPredictor:
 
   def __init__(self, params):
     self.lamb = params['lamb']
-    self.featureDim = params['featureDim']
-    self.labelDim = params['labelDim']
     self.itr = params['itr']
     self.sampleIndices = []
 
 
   def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1):
-    assert(X.shape[1] == self.featureDim)
-    assert(Y.shape[1] == self.labelDim)
+    assert(X.shape[0] == Y.shape[0])
+    self.featureDim = X.shape[1]
+    self.labelDim = Y.shape[1]
 
     print(str(datetime.now()) + " : " + "Performing down-sampling")
     # Sample train data for faster training

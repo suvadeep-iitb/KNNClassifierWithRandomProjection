@@ -14,8 +14,6 @@ class ClusteredKNNPredictor(KNNPredictor):
     self.basePredictor = params['basePredictor']
     self.clusteringAlgo = params['clusteringAlgo']
     self.embDim = params['embDim']
-    self.featureDim = params['featureDim']
-    self.labelDim = params['labelDim']
     self.maxTestSamples = 0
     self.sampleIndices = []
     self.predictorList = []
@@ -26,24 +24,36 @@ class ClusteredKNNPredictor(KNNPredictor):
       self.predictorList.append(self.basePredictor(newParams))
 
 
+
   def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
+    self.featureDim = X.shape[1]
+    self.labelDim = Y.shape[1]
+  
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
-  
      
-    print(str(datetime.now()) + " : " + "Peforming clustering")
+    print(str(datetime.now()) + " : " + "Performing clustering")
     self.clusters = self.clusteringAlgo(n_clusters = self.numClusters,
-                                        n_jobs = numThreads).fit(X)
+                                        max_iter = 10,
+                                        n_init = 5,
+                                        n_jobs = 5).fit(X)
     self.clusterAssignments = self.clusters.labels_
     nClusters = np.max(self.clusterAssignments) + 1
     print(str(datetime.now()) + " : " + "Clustering done. # of clusters = "+str(nClusters))
     self.predictorList = self.predictorList[:nClusters]
+    self.fIdMappingList = []
+    self.lIdMappingList = []
     for cId in range(nClusters):
       print(str(datetime.now()) + " : " + "Starting training on "+str(cId)+'-th cluster')
-      Xsam = X[np.equal(self.clusterAssignments, cId), :]
-      Ysam = Y[np.equal(self.clusterAssignments, cId), :]
-      self.predictorList[cId].Train(X, Y, maxTrainSamples, numThreads)
+      Xsam, fIdMapping = CompressDimension(X[np.equal(self.clusterAssignments, cId), :])
+      Ysam, lIdMapping = CompressDimension(Y[np.equal(self.clusterAssignments, cId), :])
+
+      self.fIdMappingList.append(fIdMapping)
+      self.lIdMappingList.append(lIdMapping)
+      
+      self.predictorList[cId].Train(Xsam, Ysam, maxTrainSamples, numThreads)
+
 
 
   def Predict(self, Xt, nnTest, numThreads = 1):
@@ -54,11 +64,15 @@ class ClusteredKNNPredictor(KNNPredictor):
     scoreYt = lil_matrix((Xt.shape[0], self.labelDim), dtype=float)
     for i, predictor in enumerate(self.predictorList):
       Xtsam = Xt[np.equal(clusterAssignments, i), :]
+      Xtsam = Xtsam[:, self.fIdMappingList[i]]
       print(str(datetime.now()) + " : " + "Performing prediction on "+str(i)+'-th clusters')
       predYtsam, scoreYtsam = predictor.Predict(Xtsam, nnTest, numThreads)
+      n2oLIdFunc = np.vectorize(lambda x: self.lIdMappingList[i][x])
+      predYtsam = n2oLIdFunc(predYtsam)
       predYt[np.equal(clusterAssignments, i), :] = predYtsam
       scoreYt[np.equal(clusterAssignments, i),  :] = scoreYtsam
     return predYt, scoreYt
+
 
 
   def PredictAndComputePrecision(self, Xt, Yt, nnTestList, maxTestSamples, numThreads):
@@ -75,11 +89,14 @@ class ClusteredKNNPredictor(KNNPredictor):
     for i, predictor in enumerate(self.predictorList):
       Xtsam = Xt[np.equal(clusterAssignments, i), :]
       Ytsam = Yt[np.equal(clusterAssignments, i), :]
+      Xtsam = Xtsam[:, self.fIdMappingList[i]]
+      Ytsam = Ytsam[:, self.lIdMappingList[i]]
       print(str(datetime.now()) + " : " + "Computing results on "+str(i)+'-th cluster')
       res = predictor.PredictAndComputePrecision(Xtsam, Ytsam, nnTestList, 0, numThreads)
       resList.append(res)
     res = self.CombineResults(resList, clusterAssignments, nnTestList)
     return res
+
 
 
   def CombineResults(self, resList, clusterAssignments, nnTestList):
@@ -104,3 +121,9 @@ class ClusteredKNNPredictor(KNNPredictor):
       combinedResList.append(combinedRes)
     return combinedResList
 
+
+def CompressDimension(X):
+  colSum = np.sum(np.abs(X), axis=0)
+  _, idMapping = np.where(colSum > 0.0)
+  X = X[:, idMapping]
+  return X, idMapping

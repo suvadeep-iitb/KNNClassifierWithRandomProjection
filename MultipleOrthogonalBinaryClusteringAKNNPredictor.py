@@ -24,8 +24,6 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     self.mu2 = params['mu2']
     self.mu3 = params['mu3']
     self.mu4 = params['mu4']
-    self.featureDim = params['featureDim']
-    self.labelDim = params['labelDim']
     #self.batchSize = params['batchSize']
     self.seed = params['seed']
     #self.isSparse = params['isSparse']
