@@ -27,16 +27,14 @@ class ClusteredKNNPredictor(KNNPredictor):
 
   def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
-<<<<<<< HEAD
     self.featureDim = X.shape[1]
     self.labelDim = Y.shape[1]
   
-=======
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
      
->>>>>>> dfa419842a480fe8a0c90e5a5cc11ef5204ffe0b
     print(str(datetime.now()) + " : " + "Peforming clustering")
+    print(str(datetime.now()) + " : " + "Performing clustering")
     self.clusters = self.clusteringAlgo(n_clusters = self.numClusters,
                                         max_iter = 10,
                                         n_init = 5,
