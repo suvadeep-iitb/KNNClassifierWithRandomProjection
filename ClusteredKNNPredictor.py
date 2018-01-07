@@ -33,7 +33,6 @@ class ClusteredKNNPredictor(KNNPredictor):
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
      
-    print(str(datetime.now()) + " : " + "Peforming clustering")
     print(str(datetime.now()) + " : " + "Performing clustering")
     self.clusters = self.clusteringAlgo(n_clusters = self.numClusters,
                                         max_iter = 10,
