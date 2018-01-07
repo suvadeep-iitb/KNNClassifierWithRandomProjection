@@ -38,8 +38,6 @@ class ClusteredKNNPredictor(KNNPredictor):
                                         max_iter = 10,
                                         n_init = 5,
                                         n_jobs = 5).fit(X)
-    print(str(datetime.now()) + " : " + "Peforming clustering")
-    self.clusters = self.clusteringAlgo(n_clusters = self.numClusters).fit(X)
     self.clusterAssignments = self.clusters.labels_
     nClusters = np.max(self.clusterAssignments) + 1
     print(str(datetime.now()) + " : " + "Clustering done. # of clusters = "+str(nClusters))
