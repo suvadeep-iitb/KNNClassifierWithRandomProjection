@@ -5,8 +5,8 @@ from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
 import labelCount as lc
 #from KNNPredictor import KNNPredictor as KNNPredictor
-#from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
-from OneVsRestEmbeddingAKNNPredictor import OneVsRestEmbeddingAKNNPredictor as KNNPredictor
+from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
+#from OneVsRestEmbeddingAKNNPredictor import OneVsRestEmbeddingAKNNPredictor as KNNPredictor
 
 
 #Data = namedtuple("Data", "X Y Xt Yt")
@@ -41,7 +41,7 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 20,
+  "numThreads": 15,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
@@ -49,12 +49,12 @@ params = {
   "maxTestSamples": 50000,
   "maxTrainSamples": 600000}
 
-lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
+lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
 #lambdaList = [1]
-nnTestList = [15, 20]
+nnTestList = [5, 10, 15, 20]
 maxTS = [0]
 
-for i in [15, 17]:
+for i in [6]:
   labelStruct = lc.labelStructs[i]
 
 
@@ -82,7 +82,7 @@ for i in [15, 17]:
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]
 
-  embDimList = [data.Y.shape[1], 20, 50]
+  embDimList = [20, 50]
 
   # Normalize data
   data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
@@ -106,7 +106,7 @@ for i in [15, 17]:
                          data.Yt,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 15))
+                         max(params['numThreads'], 45))
         '''
         trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
@@ -115,7 +115,8 @@ for i in [15, 17]:
                          params['maxTestSamples'],
                          max(params['numThreads'], 15))
         '''
-        resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+        resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+        #resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         #resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 
                      #'trainRes' : trainResList, 

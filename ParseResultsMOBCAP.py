@@ -1,16 +1,16 @@
 import pickle
 import labelCount as lc
 
-mu1List = [0.0001, 0.01, 1, 100, 10000]
-mu2List = [0.0001, 0.01, 1, 100, 10000]
-mu3List = [0.0001, 0.01, 1, 100, 10000]
+mu1List = [1]
+mu2List = [1]
+mu3List = [1]
 mu4List = [0]
-nnTestList = [5, 10, 15]
-embDimList = [20, 50]
-outerIterList = [3, 5, 7]
+nnTestList = [3]
+embDimList = [20]
+outerIterList = [3]
 maxTS = [0]
 
-for i in [1]:
+for i in [5]:
   labelStruct = lc.labelStructs[i]
   resFilePrefix = labelStruct.resFile
   for ts in maxTS:

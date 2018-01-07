@@ -2,11 +2,11 @@ import pickle
 import labelCount as lc
 
 lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]
-nnTestList = [5, 10, 20]
+nnTestList = [10, 15, 20]
 embDimList = [10, 20]
-numClustersList = [1]
+numClustersList = [1, 5, 10]
 
-for i in [1]:
+for i in [1, 2]:
     labelStruct = lc.labelStructs[i]
     
     resFilePrefix = labelStruct.resFile

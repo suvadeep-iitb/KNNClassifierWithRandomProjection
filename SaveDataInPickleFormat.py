@@ -81,19 +81,19 @@ class Data:
     self.Yt = Yt
 
 
-for i in [14]:
+for i in [6]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print('Running for ' + dataFile)
-  '''
+  
   filePrefix = dataFile[:-4]
   trainFile = filePrefix + '_train.txt'
   testFile = filePrefix + '_test.txt'
 
   X, Y = ReadDataFromSVMLightFile(trainFile)
   Xt, Yt = ReadDataFromSVMLightFile(testFile)
+  
   '''
-
   datafile = '../DataSets/Delicious/Delicious_data.txt'
   trSplit = '../DataSets/Delicious/delicious_trSplit.txt'
   tstSplit = '../DataSets/Delicious/delicious_tstSplit.txt'
@@ -122,7 +122,7 @@ for i in [14]:
     #outputFile = filePrefix + '.pkl'
     outputFile = '../DataSets/Delicious/delicious_'+str(i)+'.pkl'
     pickle.dump(data, open(outputFile, 'wb'), pickle.HIGHEST_PROTOCOL)
-
+'''
 '''
 trainFtFile = '../DataSets/RelatedSearch/trn_ft_mat.txt'
 trainLblFile = '../DataSets/RelatedSearch/trn_lbl_mat.txt'
@@ -137,8 +137,7 @@ Xt = ReadDataFromRelatedSearchFile(testFtFile)
 print("Test feature file reading done!")
 Yt = ReadDataFromRelatedSearchFile(testLblFile)
 print("Test label file reading done!")
+'''
 
 data = Data(X = X, Y = Y, Xt = Xt, Yt = Yt)
-outputFile = '../DataSets/RelatedSearch/related_search.pkl'
-pickle.dump(data, open(outputFile, 'wb'), pickle.HIGHEST_PROTOCOL)
-'''
+pickle.dump(data, open(dataFile, 'wb'), pickle.HIGHEST_PROTOCOL)

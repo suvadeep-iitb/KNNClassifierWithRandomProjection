@@ -85,44 +85,40 @@ def PerformExperiment(p, data):
 
 params = {
   "numLearners": 1,
-  "numThreads": 30,
+  "numThreads": 10,
   #"embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   #"mu1": 1,
   #"mu2": 1,
   #"mu3": 1,
   #"mu4": 1,
-  "innerIter": 4,
+  "innerIter": 8,
   "outerIter": 3,
   "seed": 1,
   "maxTestSamples": 50000,
   #"maxTrainSamples": 600000,
   "basePredictor": KNNPredictor}
-outerIterList = [5, 8]
+outerIterList = [3]
 '''
-mu1List = [0.000001, 0.0001, 0.01, 1]
-mu2List = [1, 100, 10000, 1000000]
-mu3List = [0.0001, 0.01, 1, 100, 10000]
-'''
-mu1List = [0.0001, 0.01, 1, 100, 10000]
+mu1List = [1, 100, 10000]
 mu2List = [0.01, 1, 100]
 mu3List = [0.0001, 0.01, 1, 100, 10000]
 '''
 mu1List = [1]
 mu2List = [1]
 mu3List = [1]
-'''
 
 mu4List = [0]
+'''
 nnTestList = [10]
 embDimList = [20, 50]
 '''
-nnTestList = [20]
-embDimList = [50]
-'''
+nnTestList = [3]
+embDimList = [20]
+
 maxTS = [0]
 
-for i in [1]:
+for i in [5]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)

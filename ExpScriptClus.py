@@ -3,7 +3,8 @@ import pickle
 import numpy as np
 from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans as kmeans
+from sklearn.cluster import MiniBatchKMeans as kmeans
 import labelCount as lc
 #from MultipleOrthogonalBinaryClusteringAKNNPredictor import MultipleOrthogonalBinaryClusteringAKNNPredictor as KNNPredictor
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
@@ -61,7 +62,7 @@ def PerformExperiment(p, data):
   knnPredictor = ClusteredKNNPredictor(p)
   newParam = p.copy()
   newParam['basePredictor'] = knnPredictor
-  ensembleKNNPredictor = EnsembleKNNPredictor(newParam)
+  ensembleKNNPredictor = knnPredictor # EnsembleKNNPredictor(newParam)
   ensembleKNNPredictor.Train(data.X, 
                      data.Y, 
                      maxTrainSamples = p['maxTrainSamples'], 
@@ -97,7 +98,7 @@ def PerformExperiment(p, data):
 params = {
   "numLearners": 1,
   "numClusters": 5,
-  "numThreads": 20,
+  "numThreads": 2,
   #"embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   #"mu1": 1,
@@ -109,7 +110,7 @@ params = {
   "seed": 1,
   "maxTestSamples": 50000,
   #"maxTrainSamples": 600000,
-  "clusteringAlgo": KMeans,
+  "clusteringAlgo": kmeans,
   "basePredictor": KNNPredictor}
 '''
 outerIterList = [3]
@@ -119,14 +120,14 @@ mu3List = [1]
 mu4List = [0]
 '''
 
-nnTestList = [5, 10, 15]
-embDimList = [100]
-numClustersList = [1, 5, 10]
-lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]
+nnTestList = [10, 20]
+embDimList = [20]
+numClustersList = [10, 50, 100, 500]
+lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
 
 maxTS = [0]
 
-for i in [1, 2]:
+for i in [4]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -170,5 +171,5 @@ for i in [1, 2]:
           newParams["logFile"] = ''#'Results/MOBCAP_'+params['resFilePrefix']+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)+'_IT'+str(it)
           paramList.append(newParams)
 
-  numThreads = params['numThreads']
+  numThreads = 15 #params['numThreads']
   Parallel(n_jobs = numThreads)(delayed(PerformExperiment)(p, data) for p in paramList)
