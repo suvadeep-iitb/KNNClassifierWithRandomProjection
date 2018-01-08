@@ -3,6 +3,7 @@ import multiprocessing
 from datetime import datetime
 from sklearn.metrics.pairwise import euclidean_distances
 from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse
+import copy
 import math
 import numpy as np
 from KNNPredictor import *
@@ -11,38 +12,38 @@ from KNNPredictor import *
 class ClusteredKNNPredictor(KNNPredictor):
   def __init__(self, params):
     self.numClusters = params['numClusters']
-    self.basePredictor = params['basePredictor']
     self.clusteringAlgo = params['clusteringAlgo']
     self.embDim = params['embDim']
+    self.logFile = params['logFile'] + '.pkl'
     self.maxTestSamples = 0
     self.sampleIndices = []
     self.predictorList = []
     for i in range(self.numClusters):
-      newParams = params.copy()
-      newParams['logFile'] += '_CL'+str(i)+'.pkl'
-      newParams['seed'] = (123*params['seed'] + i)%self.numClusters
-      self.predictorList.append(self.basePredictor(newParams))
+      newBasePredictor = copy.deepcopy(param['basePredictor'])
+      if self.logFile:
+        newLogFile = params['logFile']+'_CL'+str(i)+'.pkl'
+      else:
+        newLogFile = ''
+      newSeed = (8191*params['seed'] + i)%(2**16)
+      newBasePredictor.UpdateLogFile(newLogFile)
+      newBasePredictor.UpdateSeed(newSeed)
+      self.predictorList.append(newBasePredictor)
 
 
 
   def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
-<<<<<<< HEAD
     self.featureDim = X.shape[1]
     self.labelDim = Y.shape[1]
   
-=======
     assert(X.shape[1] == self.featureDim)
     assert(Y.shape[1] == self.labelDim)
      
->>>>>>> dfa419842a480fe8a0c90e5a5cc11ef5204ffe0b
     print(str(datetime.now()) + " : " + "Peforming clustering")
-    self.clusters = self.clusteringAlgo(n_clusters = self.numClusters,
-                                        max_iter = 10,
-                                        n_init = 5,
-                                        n_jobs = 5).fit(X)
+    self.clusters = self.clusteringAlgo.fit(X)
     self.clusterAssignments = self.clusters.labels_
     nClusters = np.max(self.clusterAssignments) + 1
+    assert(nClusters <= self.numClusters)
     print(str(datetime.now()) + " : " + "Clustering done. # of clusters = "+str(nClusters))
     self.predictorList = self.predictorList[:nClusters]
     self.fIdMappingList = []
