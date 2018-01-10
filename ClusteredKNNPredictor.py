@@ -19,7 +19,7 @@ class ClusteredKNNPredictor(KNNPredictor):
     self.sampleIndices = []
     self.predictorList = []
     for i in range(self.numClusters):
-      newBasePredictor = copy.deepcopy(param['basePredictor'])
+      newBasePredictor = copy.deepcopy(params['basePredictor'])
       if self.logFile:
         newLogFile = params['logFile']+'_CL'+str(i)+'.pkl'
       else:
