@@ -3,8 +3,8 @@ import pickle
 import numpy as np
 from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
-#from sklearn.cluster import KMeans as kmeans
-from sklearn.cluster import MiniBatchKMeans as kmeans
+from sklearn.cluster import KMeans as kmeans
+#from sklearn.cluster import MiniBatchKMeans as kmeans
 import labelCount as lc
 #from MultipleOrthogonalBinaryClusteringAKNNPredictor import MultipleOrthogonalBinaryClusteringAKNNPredictor as KNNPredictor
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
@@ -61,7 +61,6 @@ def PerformExperiment(p, data):
   print("Running for train_sam = " + str(ts) + " lambda = " + str(lamb)  + " emb_dim = " + str(ed) + " # clusters = " + str(nc));
 
   knnPredictor = ClusteredKNNPredictor(p)
-  newParam = p.copy()
   knnPredictor.Train(data.X, 
                      data.Y, 
                      maxTrainSamples = p['maxTrainSamples'], 
@@ -106,7 +105,8 @@ params = {
   #"mu4": 1,
   #"innerIter": 8,
   #"outerIter": 3,
-  "seed": 1,
+  "seed": 2,
+  "logFile": '',
   "maxTestSamples": 5000000,
   #"maxTrainSamples": 600000,
   "clusteringAlgo": kmeans,
@@ -121,8 +121,8 @@ mu4List = [0]
 
 nnTestList = [10]
 embDimList = [20, 50]
-numClustersList = [300]
-lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
+numClustersList = [35, 300]
+lambdaList = [0.01, 0.1]
 
 maxTS = [0]
 
@@ -162,11 +162,19 @@ for i in [6]:
     for ts in maxTS:
       for numClusters in numClustersList:
         for lamb in lambdaList:
+          if ((numClusters == 35 and lamb == 0.1) or (numClusters == 300 and lamb == 0.01)):
+            continue
           newParams = params.copy()
           newParams['maxTrainSamples'] = ts
           newParams['lamb'] = lamb
           newParams['numClusters'] = numClusters
           newParams["embDim"] = ed
+          newParams['clusteringAlgo'] = kmeans(n_clusters = numClusters,
+                                               init = 'random',
+                                               n_init = 3,
+                                               max_iter = 10,
+                                               n_jobs = 3)
+          newParams['basePredictor'] = KNNPredictor(newParams)
           newParams["logFile"] = ''#'Results/MOBCAP_'+params['resFilePrefix']+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)+'_IT'+str(it)
           paramList.append(newParams)
 
