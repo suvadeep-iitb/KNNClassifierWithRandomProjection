@@ -24,11 +24,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     self.mu2 = params['mu2']
     self.mu3 = params['mu3']
     self.mu4 = params['mu4']
-    #self.batchSize = params['batchSize']
     self.seed = params['seed']
-    #self.isSparse = params['isSparse']
-    #self.maxActiveFeatures = params['maxActiveFeatures']
-    #self.maxActiveLabels = params['maxActiveLabels']
     self.innerIter = params['innerIter']
     self.logFile = params['logFile']
     self.initialFeatureProjMatrixFile = params['initialFeatureProjMatrixFile']
@@ -49,7 +45,8 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
 
 
   def LearnParams(self, X, Y, itr=1, numThreads=1):
-    self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(self.featureDim, self.embDim, self.initialFeatureProjMatrixFile, self.seed)
+    featureDim = X.shape[1]
+    self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(featureDim, self.embDim, self.initialFeatureProjMatrixFile, self.seed)
     self.labelProjMatrix = GenerateInitialLabelProjectionMatrix(X, Y, self.embDim, self.seed+1023)
     self.log = ""
     for i in range(itr):

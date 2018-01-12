@@ -7,6 +7,12 @@ embDimList = [10, 20]
 numClustersList = [1, 5, 10]
 
 for i in [1, 2]:
+lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
+nnTestList = [10]
+embDimList = [50]
+numClustersList = [300]
+
+for i in [6]:
     labelStruct = lc.labelStructs[i]
     
     resFilePrefix = labelStruct.resFile

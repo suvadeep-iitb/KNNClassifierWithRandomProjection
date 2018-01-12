@@ -7,6 +7,12 @@ nnTestList = [5, 10, 15, 20]
 for i in [6]:
     labelStruct = lc.labelStructs[i]
     embDimList = [20, 50]
+lambdaList = [0.01]
+nnTestList = [10]
+embDimList = [100, 200]
+
+for i in [6]:
+    labelStruct = lc.labelStructs[i]
     
     resFilePrefix = labelStruct.resFile
     for embDim in embDimList:

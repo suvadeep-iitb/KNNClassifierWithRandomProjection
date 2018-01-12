@@ -11,14 +11,13 @@ from sklearn.neighbors import NearestNeighbors
 class KNNPredictor:
 
   def __init__(self, params):
-    pass
+    self.logFile = params['logFile']
+    self.seed = params['seed']
 
 
 
   def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
-    self.featureDim = X.shape[1]
-    self.labelDim = Y.shape[1]
 
     if issparse(X):
       # The python interface of nmslib library most probably does not support sparse input
@@ -39,8 +38,6 @@ class KNNPredictor:
 
 
   def Predict(self, Xt, nnTest, numThreads = 1):
-    assert(Xt.shape[1] == self.featureDim)
-
     # Compute K nearest neighbors for input data
     print(str(datetime.now()) + " : " + "Computing Approximate KNN")
     knn = self.ComputeKNN(Xt, nnTest, numThreads);
@@ -74,7 +71,6 @@ class KNNPredictor:
 
 
   def ComputePrecision(self, predYt, Yt, K, numThreads):
-    assert(Yt.shape[1] == self.labelDim)
     assert(predYt.shape == Yt.shape)
 
     nt, L = Yt.shape
@@ -110,8 +106,6 @@ class KNNPredictor:
 
   def PredictAndComputePrecision(self, Xt, Yt, nnTestList, maxTestSamples, numThreads):
     assert(Xt.shape[0] == Yt.shape[0])
-    assert(Xt.shape[1] == self.featureDim)
-    assert(Yt.shape[1] == self.labelDim)
 
     # Perform down sampling of input data
     if (maxTestSamples > 0):
@@ -135,6 +129,16 @@ class KNNPredictor:
       resList.append({'precision': precision})
 
     return resList
+
+
+
+  def UpdateLogFile(self, logFile):
+    self.logFile = logFile
+
+
+
+  def UpdateSeed(self, seed):
+    self.seed = seed
 
 
 

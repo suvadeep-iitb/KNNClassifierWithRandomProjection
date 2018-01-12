@@ -5,6 +5,8 @@ from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
 #from sklearn.cluster import KMeans as kmeans
 from sklearn.cluster import MiniBatchKMeans as kmeans
+from sklearn.cluster import KMeans as kmeans
+#from sklearn.cluster import MiniBatchKMeans as kmeans
 import labelCount as lc
 #from MultipleOrthogonalBinaryClusteringAKNNPredictor import MultipleOrthogonalBinaryClusteringAKNNPredictor as KNNPredictor
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
@@ -56,6 +58,7 @@ def PerformExperiment(p, data):
   lamb = p['lamb']
   ed = p['embDim']
   nc = p['numClusters']
+  nt = p['numThreads']
   #print("Running for " + "mu1 = " + str(mu1)  + " mu2 = " + str(mu2) + " mu3 = " + str(mu3) + " mu4 = " + str(mu4) + " emb_dim = " + str(ed) + "  iter = " + str(it));
   print("Running for train_sam = " + str(ts) + " lambda = " + str(lamb)  + " emb_dim = " + str(ed) + " # clusters = " + str(nc));
 
@@ -64,17 +67,18 @@ def PerformExperiment(p, data):
   newParam['basePredictor'] = knnPredictor
   ensembleKNNPredictor = knnPredictor # EnsembleKNNPredictor(newParam)
   ensembleKNNPredictor.Train(data.X, 
+  knnPredictor.Train(data.X, 
                      data.Y, 
                      maxTrainSamples = p['maxTrainSamples'], 
-                     numThreads = 1)
-  testResList = ensembleKNNPredictor.PredictAndComputePrecision(
+                     numThreads = nt)
+  testResList = knnPredictor.PredictAndComputePrecision(
                      data.Xt,
                      data.Yt,
                      p["nnTestList"],
                      p['maxTestSamples'],
-                     numThreads = 1)
+                     numThreads = 40)
   '''
-  trainResList = ensembleKNNPredictor.PredictAndComputePrecision(
+  trainResList = knnPredictor.PredictAndComputePrecision(
                      data.X,
                      data.Y,
                      p["nnTestList"],
@@ -88,7 +92,7 @@ def PerformExperiment(p, data):
                'nnTestList' : p['nnTestList'], 
                #'featureProjMatrix' : knnPredictor.GetFeatureProjMatrix(),
                #'labelProjMatrix' : knnPredictor.GetLabelProjMatrix(),
-               'trainSample' : knnPredictor.sampleIndices,
+               #'trainSample' : knnPredictor.sampleIndices,
                'params' : p}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
   print('Finished')
   print('')
@@ -99,6 +103,7 @@ params = {
   "numLearners": 1,
   "numClusters": 5,
   "numThreads": 2,
+  "numThreads": 10,
   #"embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   #"mu1": 1,
@@ -107,8 +112,9 @@ params = {
   #"mu4": 1,
   #"innerIter": 8,
   #"outerIter": 3,
-  "seed": 1,
-  "maxTestSamples": 50000,
+  "seed": 2,
+  "logFile": '',
+  "maxTestSamples": 5000000,
   #"maxTrainSamples": 600000,
   "clusteringAlgo": kmeans,
   "basePredictor": KNNPredictor}
@@ -128,6 +134,15 @@ lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
 maxTS = [0]
 
 for i in [4]:
+=======
+nnTestList = [10]
+embDimList = [20, 50]
+numClustersList = [35, 300]
+lambdaList = [0.01, 0.1]
+
+maxTS = [0]
+
+for i in [6]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -163,13 +178,23 @@ for i in [4]:
     for ts in maxTS:
       for numClusters in numClustersList:
         for lamb in lambdaList:
+          if ((numClusters == 35 and lamb == 0.1) or (numClusters == 300 and lamb == 0.01)):
+            continue
           newParams = params.copy()
           newParams['maxTrainSamples'] = ts
           newParams['lamb'] = lamb
           newParams['numClusters'] = numClusters
           newParams["embDim"] = ed
+          newParams['clusteringAlgo'] = kmeans(n_clusters = numClusters,
+                                               init = 'random',
+                                               n_init = 3,
+                                               max_iter = 10,
+                                               n_jobs = 3)
+          newParams['basePredictor'] = KNNPredictor(newParams)
           newParams["logFile"] = ''#'Results/MOBCAP_'+params['resFilePrefix']+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)+'_IT'+str(it)
           paramList.append(newParams)
 
   numThreads = 15 #params['numThreads']
   Parallel(n_jobs = numThreads)(delayed(PerformExperiment)(p, data) for p in paramList)
+  for p in paramList:
+    PerformExperiment(p, data) 

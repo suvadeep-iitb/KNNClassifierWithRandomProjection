@@ -6,6 +6,7 @@ from sklearn.preprocessing import normalize
 import labelCount as lc
 #from KNNPredictor import KNNPredictor as KNNPredictor
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
+from EnsembleKNNPredictor import EnsembleKNNPredictor
 #from OneVsRestEmbeddingAKNNPredictor import OneVsRestEmbeddingAKNNPredictor as KNNPredictor
 
 
@@ -40,13 +41,14 @@ def MyNormalize(X, Xt, norm):
   return XXt[:n, :], XXt[n:, :]
 
 params = {
-  "numLearners": 1, # Currently works for only 1
-  "numThreads": 20,
+  "numLearners": 1,
+  "numThreads": 15,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
   "seed": 1,
-  "maxTestSamples": 50000,
+  "logFile": '',
+  "maxTestSamples": 5000000,
   "maxTrainSamples": 600000}
 
 lambdaList = [0.001, 0.01, 0.1, 1]
@@ -56,6 +58,13 @@ embDimList = [20, 50]
 maxTS = [0]
 
 for i in [1, 2]:
+lambdaList = [0.0001, 0.001, 0.1]
+#lambdaList = [1]
+nnTestList = [10]
+embDimList = [100, 200]
+maxTS = [0]
+
+for i in [6]:
   labelStruct = lc.labelStructs[i]
 
 
@@ -83,6 +92,7 @@ for i in [1, 2]:
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]
 
+
   # Normalize data
   data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
 
@@ -95,6 +105,8 @@ for i in [1, 2]:
         params["embDim"] = ed
         print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
 
+        #params["basePredictor"] = KNNPredictor(params)
+        #knnPredictor = EnsembleKNNPredictor(params)
         knnPredictor = KNNPredictor(params)
         knnPredictor.Train(data.X, 
                          data.Y,
@@ -117,10 +129,11 @@ for i in [1, 2]:
         resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         #resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         #resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+        resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 
                      #'trainRes' : trainResList, 
                      'nnTestList' : nnTestList, 
-                     'featureProjMatrix' : knnPredictor.featureProjMatrix,
+                     #'featureProjMatrix' : knnPredictor.GetFeatureProjMatrix(),
                      #'trainSample' : knnPredictor.sampleIndices,
                      #'trainError' : knnPredictor.trainError,
                      #'testError' : knnPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),

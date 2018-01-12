@@ -24,17 +24,15 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
   def __init__(self, params):
     self.embDim = params['embDim']
     self.lamb = params['lamb']
-    self.seed = params['seed']
     self.maxTrainSamples = 0
+    self.seed = params['seed']
+    self.logFile = params['logFile']
     self.trainError = -1
     self.sampleIndices = []
 
 
-
   def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1, itr = 10):
     assert(X.shape[0] == Y.shape[0])
-    self.featureDim = X.shape[1]
-    self.labelDim = Y.shape[1]
 
     print(str(datetime.now()) + " : " + "Performing down-sampling")
     # Sample train data for faster training
@@ -89,8 +87,8 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
   def LearnParams(self, X, Y, itr, numThreads):
-    L = self.labelDim
-    D = self.featureDim
+    L = Y.shape[1]
+    D = X.shape[1]
     embDim = self.embDim
     C = self.lamb
 
