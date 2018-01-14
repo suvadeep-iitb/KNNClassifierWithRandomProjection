@@ -40,8 +40,8 @@ class ClusteredKNNPredictor(KNNPredictor):
     assert(Y.shape[1] == self.labelDim)
      
     print(str(datetime.now()) + " : " + "Peforming clustering")
-    self.clusters = self.clusteringAlgo.fit(X)
-    self.clusterAssignments = self.clusters.labels_
+    self.clusteringAlgo.fit(X, Y)
+    self.clusterAssignments = self.clusteringAlgo.labels_
     nClusters = np.max(self.clusterAssignments) + 1
     assert(nClusters <= self.numClusters)
     print(str(datetime.now()) + " : " + "Clustering done. # of clusters = "+str(nClusters))
@@ -52,6 +52,7 @@ class ClusteredKNNPredictor(KNNPredictor):
       print(str(datetime.now()) + " : " + "Starting training on "+str(cId)+'-th cluster')
       Xsam, fIdMapping = CompressDimension(X[np.equal(self.clusterAssignments, cId), :])
       Ysam, lIdMapping = CompressDimension(Y[np.equal(self.clusterAssignments, cId), :])
+      print("Cluster "+str(cId)+": # of samples "+str(Xsam.shape[0])+", feature dim "+str(fIdMapping.shape[0])+", label dim "+str(lIdMapping.shape[0]))
 
       self.fIdMappingList.append(fIdMapping)
       self.lIdMappingList.append(lIdMapping)
@@ -63,7 +64,7 @@ class ClusteredKNNPredictor(KNNPredictor):
   def Predict(self, Xt, nnTest, numThreads = 1):
     assert(Xt.shape[1] == self.featureDim)
 
-    clusterAssignments = self.clusters.predict(Xt)
+    clusterAssignments = self.clusteringAlgo.predict(Xt)
     predYt = lil_matrix((Xt.shape[0], self.labelDim), dtype=int)
     scoreYt = lil_matrix((Xt.shape[0], self.labelDim), dtype=float)
     for i, predictor in enumerate(self.predictorList):
@@ -88,7 +89,7 @@ class ClusteredKNNPredictor(KNNPredictor):
     if (maxTestSamples > 0):
       Xt, Yt, testSample = DownSampleData(Xt, Yt, maxTestSamples)
 
-    clusterAssignments = self.clusters.predict(Xt)
+    clusterAssignments = self.clusteringAlgo.predict(Xt)
     resList = []
     for i, predictor in enumerate(self.predictorList):
       Xtsam = Xt[np.equal(clusterAssignments, i), :]
@@ -98,6 +99,8 @@ class ClusteredKNNPredictor(KNNPredictor):
       print(str(datetime.now()) + " : " + "Computing results on "+str(i)+'-th cluster')
       res = predictor.PredictAndComputePrecision(Xtsam, Ytsam, nnTestList, 0, numThreads)
       resList.append(res)
+      for nn in range(len(nnTestList)):
+        print('Cluster '+str(i)+' : size '+str(sum(clusterAssignments==i))+' nn '+str(nnTestList[nn])+' prec@1 '+str(res[nn]['precision'][0]))
     res = self.CombineResults(resList, clusterAssignments, nnTestList)
     return res
 

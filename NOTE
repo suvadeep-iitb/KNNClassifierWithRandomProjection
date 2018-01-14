@@ -1,0 +1,5 @@
+1. Building Boost: https://eb2.co/blog/2012/03/building-boost.python-for-python-3.2/
+2. g++ greet_binding.cpp -I/usr/include/python3.4 -I/usr/local/include  /usr/local/lib/libboost_python3.so.1.66.0  -lpython3.4m -o greet.so --shared -fPIC
+3. Env variable setting: export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+4. libpython.so path: /usr/lib/x86_64-linux-gnu/
+5. DataPartitioner compilation command: g++ -std=c++11 DataPartitionerWrapper.cpp DataPartitioner.cc -I/usr/include/python3.4 -I/usr/local/include  /usr/local/lib/libboost_python3.so.1.66.0 /usr/local/lib/libboost_numpy3.so.1.66.0  -lpython3.4m -o data_partitioner.so --shared -fPIC

@@ -106,7 +106,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Z[:, l], X, l, C) for l in range(embDim))
 
     avgTrainError = sum([resultList[l][1] for l in range(embDim)])/embDim
-    print("Total training Error: "+str(avgTrainError))
+    print("Mean training Error: "+str(avgTrainError))
 
     # Collect the model parameters into a matrix
     W = np.reshape(resultList[0][0], (D, 1))
