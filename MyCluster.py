@@ -1,10 +1,13 @@
 import numpy as np
 from data_partitioner import DataPartitioner as DP
 from scipy.sparse import csr_matrix, vstack, hstack
+from scipy.spatial.distance import cdist
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.svm import LinearSVC
 from datetime import datetime
+import minmax_kmeans as mmkmeans
 
 class NearestNeighbour:
   def __init__(self,
@@ -71,40 +74,89 @@ class NearestNeighbour:
     return labels
 
 
+class MinMaxKMeans:
+  def __init__(self,
+               n_clusters,
+               max_iter = 10,
+               n_init = 1,
+               min_size = 0,
+               max_size = None,
+               seed = 0,
+               verbose = 1,
+               n_jobs = 1):
+    self.n_clusters_ = n_clusters
+    self.n_init_ = n_init
+    self.max_iter_ = max_iter
+    self.min_size_ = min_size
+    self.max_size_ = max_size
+    self.seed_ = seed
+    self.verbose_ = verbose
+    self.n_jobs_ = n_jobs
+
+
+  def fit(self, X):
+    X = list(X)
+    for i in range(self.n_init_):
+      clusters, centers = mmkmeans.minsize_kmeans(X, self.n_clusters_, self.max_iter_, self.min_size_, self.max_size_)
+      if clusters:
+        quality = mmkmean.compute_quality(X, clusters)
+        if not best or (quality < best):
+          best = quality
+          best_clusters = clusters
+          best_centers = centers
+    self.labels_ = np.array(best_clusters)
+    self.centers_ = np.array(best_centers).reshape((self.n_clusters_, X.shape[1]))
+
+
+  def predict(self, X):
+    dist = cdist(X, self.centers_.T)
+    return np.argmin(dist, axis = 1).reshape(-1)
+    
+
 
 class LabelKmeans:
   def __init__(self,
                n_clusters,
                n_init,
                max_iter,
+               C,
                seed,
                verbose,
                label_normalize,
-               lamb,
+               alpha,
                n_jobs):
     self.n_clusters_ = n_clusters
     self.n_init_ = n_init
     self.max_iter_ = max_iter
+    self.C_ = C
     self.seed_ = seed
     self.verbose_ = verbose
     self.label_normalize_ = label_normalize
-    self.lamb_ = lamb
+    self.alpha_ = alpha
     self.n_jobs_ = n_jobs
-    self.base_clusters_ = KMeans(n_clusters = n_clusters,
-                                n_init = n_init,
-                                max_iter = max_iter,
-                                random_state = seed,
-                                verbose = verbose,
-                                n_jobs = n_jobs)
-
 
   def fit(self, X, Y):
     assert(X.shape[0] == Y.shape[0])
 
+    self.base_clusters_ = KMeans(n_clusters = self.n_clusters_,
+                                       n_init = self.n_init_,
+                                       max_iter = self.max_iter_,
+                                       random_state = self.seed_,
+                                       #min_size = X.shape[0]/float(2*self.n_clusters_),
+                                       verbose = self.verbose_,
+                                       n_jobs = self.n_jobs_
+                                       )
+    self.clf_ = LinearSVC(dual = False, C=self.C_)
+
+    label_freq = np.array(np.sum(Y, axis = 0)).reshape(-1)
+    freq_cutoff = self.alpha_ * Y.shape[0]
+    Y = Y[:, label_freq < freq_cutoff]
+    print(str(np.sum(label_freq > freq_cutoff))+' labels have been removed during clustering')
+
     X = csr_matrix(X)
     Y = csr_matrix(Y)
     if (self.label_normalize_):
-      Y = normalize(Y, norm = 'l2', axis = 1)
+      Y = normalize(Y, norm = 'l2', axis = 0)
 
     self.base_clusters_.fit(Y.T)
     self.cluster_assignments_ = []
@@ -112,15 +164,15 @@ class LabelKmeans:
       sel_labels = (self.base_clusters_.labels_ == cid)
       cl_ass = (np.sum(Y[:, sel_labels], axis=1) > 0.0)
       self.cluster_assignments_.append(cl_ass)
-      print(str(datatime.now())+' : Cluster '+str(cid)+' # of examples '+str(np.sum(cl_ass))+' # of labels '+str(np.sum(self.base_clusters_.assignments_==cid)))
+      print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(np.sum(cl_ass))+' # of labels '+str(np.sum(sel_labels)))
 
-    clf = LinearSVC(dual = False, C=1.0, intercept = False)
-    self.centers_ = np.zeros((0, X.shape[1]), dtype=np.float)
+    self.centers_ = np.zeros((0, X.shape[1]+1), dtype=np.float)
     print(str(datetime.now())+' : Learning predictor for each cluster')
     for cid, cl_ass in enumerate(self.cluster_assignments_):
-      clf.fit(X, cl_ass)
-      self.centers_ = vstack([self.centers_, clf.coef_.reshape(1, -1)])
-      print(str(datetime.now())+' : Cluster '+str(cid)+' mean accuracy '+str(clf.score(X, cl_ass)))
+      Xtr, Xte, Ytr, Yte = train_test_split(X, cl_ass, test_size = 0.1, random_state = self.seed_)
+      self.clf_.fit(Xtr, np.array(Ytr).reshape(-1))
+      self.centers_ = np.vstack([self.centers_, np.hstack([self.clf_.coef_, self.clf_.intercept_.reshape((1, 1))])])
+      print(str(datetime.now())+' : Cluster '+str(cid)+' train accuracy '+str(self.clf_.score(Xtr, Ytr))+' test accuracy '+str(self.clf_.score(Xte, Yte)))
 
     print(str(datetime.now())+' : Computing label assignment for each example')
     self.labels_ = self.predict(X)
@@ -129,7 +181,7 @@ class LabelKmeans:
 
   def predict(self, X):
     X = csr_matrix(X)
-    scores = X * self.centers_.T
+    scores = X * self.centers_[:, :-1].T + self.centers_[:, -1].T
     return np.argmax(scores, axis=1).reshape(-1)
 
 
