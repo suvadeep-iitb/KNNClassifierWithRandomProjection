@@ -267,16 +267,14 @@ void get_edge_set(
     float delta_min,
     float delta_max)
 {
-    std::set<size_t> C;
-    std::set<size_t> S;
+    std::set<size_t> S_minus_C;
+    std::unordered_set<size_t> S;
     size_t edge_count = 0;
 
     while (edge_count <= delta_max) {
       std::set<size_t> diff;
-      std::set_difference(S.begin(), S.end(), C.begin(), C.end(),
-                          std::inserter(diff, diff.begin()));
       size_t x;
-      if (diff.size() == 0) {
+      if (S_minus_C.size() == 0) {
         if ((left_vertices.size() == 0) || (edge_count >= delta_min))
           return;
         size_t r = rand() % left_vertices.size();
@@ -286,19 +284,12 @@ void get_edge_set(
       }
       else {
         float min_val = nn_graph.size();
-        for (auto&& it: diff) {
+        for (auto&& it: S_minus_C) {
           size_t cur_node = it;
           float val = 0;
-          auto s = S.begin();
-          auto p = nn_graph[cur_node].begin();
-          while(p != nn_graph[cur_node].end()) {
-            if (s == S.end()) break;
-            if (*p < *s) {
+          for (auto&& nn: nn_graph[cur_node]) {
+            if (S.find(nn) == S.end()) 
               val += 1;
-              p++;
-            }
-            else if (*s < *p) { s++; }
-            else {s++; p++;}
           }
 
           if (val < min_val) {
@@ -309,29 +300,30 @@ void get_edge_set(
       }
 
       // AllocEdges
-      C.insert(x);
-      S.insert(x);
+      if (S.find(x) == S.end())
+        S.insert(x);
+      else
+        S_minus_C.erase(x);
       left_vertices.erase(x);
-      std::set<size_t> yset;
-      std::set_difference(nn_graph[x].begin(), nn_graph[x].end(), 
-                          S.begin(), S.end(),
-                          std::inserter(yset, yset.begin()));
-
+      std::set<size_t> yset = nn_graph[x];
       for (auto&& y: yset) {
-        std::set<size_t> zset;
-        std::set_intersection(nn_graph[y].begin(), nn_graph[y].end(),
-                              S.begin(), S.end(),
-                              std::inserter(zset, zset.begin()));
+        if (S.find(y) != S.end()) continue;
+
+        S.insert(y);
+        S_minus_C.insert(y);
+        std::set<size_t> zset = nn_graph[y];
         for (auto z: zset) {
+          if (S.find(z) == S.end()) continue;
+
           edge_count++;
           cluster_assignment.insert(y);
           cluster_assignment.insert(z);
+
           auto res = std::find(nn_graph[y].begin(), nn_graph[y].end(), z);
-          nn_graph[y].erase(res);
+          if (res != nn_graph[y].end()) nn_graph[y].erase(res);
+
           res = std::find(nn_graph[z].begin(), nn_graph[z].end(), y);
-          nn_graph[z].erase(res);
-          if (edge_count > delta_max)
-            return;
+          if (res != nn_graph[z].end()) nn_graph[z].erase(res);
         }
       }
     }
@@ -689,37 +681,42 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
 
   get_positives(labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &pos_vec);
 
-  // create a symmtric nn graph
-  std::vector<std::vector<std::pair<size_t, float> > > nn_graph(labels_vec.size());
+#define SYM 1
+#if SYM
+  // create a symmetric nn graph
+  std::vector<std::set<size_t> > nn_graph(labels_vec.size());
   for (auto i = 0; i < pos_vec.size(); ++i) {
     std::unordered_set<size_t> vset;
     for (auto&& p: pos_vec[i]) {
-      if (std::find(vset.begin(), vset.end(), p.first) != vset.end())
+      size_t cur = p.first;
+      if (std::find(vset.begin(), vset.end(), cur) != vset.end())
         continue;
-      vset.insert(p.first);
-      insert_pair(nn_graph[i], p);
-      insert_pair(nn_graph[p.first], std::make_pair(i, p.second));
+      vset.insert(cur);
+      if (std::find(nn_graph[i].begin(), nn_graph[i].end(), cur) == nn_graph[i].end())
+        nn_graph[i].insert(cur);
+      if (std::find(nn_graph[cur].begin(), nn_graph[cur].end(), i) == nn_graph[cur].end())
+        nn_graph[cur].insert(i);
     }
   }
+#else
+  // create asymmetric nn graph
+  std::vector<std::set<size_t> > nn_graph(labels_vec.size());
+  for (auto i = 0; i < pos_vec.size(); ++i) {
+    for (auto&& p: pos_vec[i])
+      nn_graph[i].insert(p.first);
+  }
+#endif //#if
+
+
   pos_vec.clear();
 
-  // sort the nn graph
-  for (auto&& vec: nn_graph)
-    std::sort(vec.begin(), vec.end(), comp);
-
   size_t pair_num = 0;
-  float edge_weight = 0;
   for (size_t i = 0; i < nn_graph.size(); ++i) { 
     pair_num += nn_graph[i].size();
-    for (auto&& p: nn_graph[i])
-      edge_weight += p.second;
   }
-  // devide the edge count by 2 as each edge has been counted twice
-  pair_num /= 2;
-  edge_weight /= 2;
 
   if (verbose > 0) {
-    fprintf(stderr, "# of nn graph edges: %lu (%.2f%%)\n", pair_num, 100.0 * 2 * pair_num / num_nn / labels_vec.size());
+    fprintf(stderr, "# of nn graph edges: %lu (%.2f%%)\n", pair_num, 100.0 * pair_num / num_nn / labels_vec.size());
   }
 
   // partition dataset by edge partitioning
@@ -729,7 +726,11 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
   for (size_t i = 0; i < labels_vec.size(); ++i)
     left_vertices.insert(i);
 
+#if SYM
+  float delta_max = (replication_factor * pair_num) / (K * 2);
+#else
   float delta_max = (replication_factor * pair_num) / K;
+#endif
   float delta_min = (float)labels_vec.size() / K;
   for (auto k = 0; k < K; k++) {
     get_edge_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max);
@@ -739,14 +740,9 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
   }
 
   size_t pair_left = 0;
-  float cut_weight = 0;
   for (auto&& vec: nn_graph) {
     pair_left += vec.size();
-    for (auto&& p: vec)
-      cut_weight += p.second;
   }
-  pair_left /= 2;
-  cut_weight /= 2;
 
   float rep_factor = 0;
   for (auto k = 0; k < K; k++)
@@ -754,7 +750,7 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
   rep_factor /= labels_vec.size();
 
   if (verbose > 0) {
-    fprintf(stderr, "# of edges lost: %lu (%.2f%%), weight of graph cut: %f (%.2f%%)\n", pair_left, (100.0 * pair_left) / pair_num, cut_weight, (100.0 * cut_weight) / edge_weight);
+    fprintf(stderr, "# of edges lost: %lu (%.2f%%)\n", pair_left, (100.0 * pair_left) / pair_num);
   }
   
   nn_graph.clear();

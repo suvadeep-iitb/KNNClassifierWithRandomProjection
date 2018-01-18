@@ -42,7 +42,7 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1,
-  "numThreads": 15,
+  "numThreads": 5,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
@@ -51,20 +51,13 @@ params = {
   "maxTestSamples": 5000000,
   "maxTrainSamples": 600000}
 
-lambdaList = [0.001, 0.01, 0.1, 1]
+lambdaList = [0.1]
 #lambdaList = [1]
-nnTestList = [10, 20]
-embDimList = [20, 50]
+nnTestList = [3, 5, 10, 20]
+embDimList = [100]
 maxTS = [0]
 
-for i in [1, 2]:
-lambdaList = [0.0001, 0.001, 0.1]
-#lambdaList = [1]
-nnTestList = [10]
-embDimList = [100, 200]
-maxTS = [0]
-
-for i in [6]:
+for i in [18]:
   labelStruct = lc.labelStructs[i]
 
 
@@ -97,10 +90,10 @@ for i in [6]:
   data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
 
   resFilePrefix = labelStruct.resFile;
-  for ts in maxTS:
-    params['maxTrainSamples'] = ts
-    for lam in lambdaList:
-      for ed in embDimList:
+  for ed in embDimList:
+    for ts in maxTS:
+      params['maxTrainSamples'] = ts
+      for lam in lambdaList:
         params["lamb"] = lam
         params["embDim"] = ed
         print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
@@ -117,19 +110,18 @@ for i in [6]:
                          data.Yt,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 45))
+                         max(params['numThreads'], 40))
         '''
         trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 15))
+                         max(params['numThreads'], 40))
         '''
         resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         #resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         #resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-        resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 
                      #'trainRes' : trainResList, 
                      'nnTestList' : nnTestList, 

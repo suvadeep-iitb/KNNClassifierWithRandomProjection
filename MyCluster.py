@@ -1,6 +1,6 @@
 import numpy as np
 from data_partitioner import DataPartitioner as DP
-from scipy.sparse import csr_matrix, vstack, hstack
+from scipy.sparse import csr_matrix, lil_matrix, csc_matrix, vstack, hstack
 from scipy.spatial.distance import cdist
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import normalize
@@ -9,8 +9,11 @@ from sklearn.svm import LinearSVC
 from MulticlassPredictor import MulticlassPredictor
 from datetime import datetime
 import minmax_kmeans as mmkmeans
+#import minmax_kmeans as mmkmeans
 import pickle
 
+
+'''
 class NearestNeighbour:
   def __init__(self,
                n_clusters,
@@ -127,7 +130,69 @@ class MinMaxKMeans:
   def predict(self, X):
     dist = cdist(X, self.centers_.T)
     return np.argmin(dist, axis = 1).reshape(-1)
+'''
+
     
+class LabelRand:
+  def __init__(self,
+               n_clusters,
+               n_init,
+               max_iter,
+               C,
+               seed,
+               verbose,
+               alpha,
+               n_jobs):
+    self.n_clusters_ = n_clusters
+    self.n_init_ = n_init
+    self.max_iter_ = max_iter
+    self.C_ = C
+    self.seed_ = seed
+    self.verbose_ = verbose
+    self.alpha_ = alpha
+    self.n_jobs_ = n_jobs
+
+
+  def fit(self, X, Y):
+    assert(X.shape[0] == Y.shape[0])
+
+    params = {'lamb': self.C_, 'itr': self.max_iter_}
+    self.clf_ = MulticlassPredictor(params)
+
+    label_freq = np.array(np.sum(Y, axis = 0)).reshape(-1)
+    freq_cutoff = self.alpha_ * Y.shape[0]
+    Y = Y[:, label_freq < freq_cutoff]
+    print(str(np.sum(label_freq > freq_cutoff))+' labels have been removed during clustering')
+
+    assignments = [l%self.n_clusters_ for l in range(Y.shape[1])]
+    assignments = np.random.permutation(assignments)
+    self.cluster_assignments_ = csc_matrix((X.shape[0], 0), dtype=np.float)
+    for cid in range(self.n_clusters_):
+      sel_labels = (assignments == cid)
+      cl_ass = (np.sum(Y[:, sel_labels], axis=1) > 0.0).reshape((X.shape[0], 1))
+      self.cluster_assignments_ = hstack([self.cluster_assignments_, csc_matrix(cl_ass)])
+      print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(np.sum(cl_ass))+' # of labels '+str(np.sum(sel_labels)))
+    self.cluster_assignments_ = csr_matrix(self.cluster_assignments_)
+
+    Xtr, Xte, Ytr, Yte = train_test_split(X, self.cluster_assignments_, test_size = 0.1, random_state = self.seed_)
+    self.clf_.Train(Xtr, Ytr, numThreads = self.n_jobs_)
+    labels, _ = self.clf_.Predict(Xtr, numThreads = self.n_jobs_)
+    labels = np.array(labels[:, 0].todense()).reshape(-1)
+    print(str(datetime.now())+' : Cluster selection accuracy in train set '+str(np.sum([Ytr[i, labels[i]] for i in range(Ytr.shape[0])])/float(Ytr.shape[0])))
+    labels, _ = self.clf_.Predict(Xte, numThreads = self.n_jobs_)
+    labels = np.array(labels[:, 0].todense()).reshape(-1)
+    print(str(datetime.now())+' : Cluster selection accuracy in valid set '+str(np.sum([Yte[i, labels[i]] for i in range(Yte.shape[0])])/float(Yte.shape[0])))
+  
+    pickle.dump(self.clf_.GetParamMatrix(), open('WeightMatrix.pkl', 'wb'))
+    print(str(datetime.now())+' : Computing label assignment for each example')
+    labels, _ = self.clf_.Predict(X, numThreads = self.n_jobs_)
+    self.labels_ = np.array(labels[:, 0].todense()).reshape(-1)
+
+
+  def predict(self, X):
+    labels, _ = self.clf_.Predict(X, numThreads = self.n_jobs_)
+    return np.array(labels[:, 0].todense()).reshape(-1)
+
 
 
 class LabelRand:

@@ -66,7 +66,6 @@ def PerformExperiment(p, data):
   newParam = p.copy()
   newParam['basePredictor'] = knnPredictor
   ensembleKNNPredictor = knnPredictor # EnsembleKNNPredictor(newParam)
-  ensembleKNNPredictor.Train(data.X, 
   knnPredictor.Train(data.X, 
                      data.Y, 
                      maxTrainSamples = p['maxTrainSamples'], 
@@ -102,7 +101,6 @@ def PerformExperiment(p, data):
 params = {
   "numLearners": 1,
   "numClusters": 5,
-  "numThreads": 2,
   "numThreads": 10,
   #"embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
@@ -126,21 +124,12 @@ mu3List = [1]
 mu4List = [0]
 '''
 
-nnTestList = [10, 20]
-embDimList = [20]
-numClustersList = [10, 50, 100, 500]
-lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
-
-maxTS = [0]
-
-for i in [4]:
-=======
 nnTestList = [10]
-embDimList = [20, 50]
-numClustersList = [35, 300]
+embDimList = [20]
+numClustersList = [35]
 lambdaList = [0.01, 0.1]
 
-maxTS = [0]
+maxTS = [20000, 50000]
 
 for i in [6]:
   labelStruct = lc.labelStructs[i]
@@ -194,7 +183,5 @@ for i in [6]:
           newParams["logFile"] = ''#'Results/MOBCAP_'+params['resFilePrefix']+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)+'_IT'+str(it)
           paramList.append(newParams)
 
-  numThreads = 15 #params['numThreads']
-  Parallel(n_jobs = numThreads)(delayed(PerformExperiment)(p, data) for p in paramList)
   for p in paramList:
     PerformExperiment(p, data) 
