@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdio>
+#include <set>
 #include <vector>
 
 class DataPartitioner {
@@ -34,6 +35,10 @@ class DataPartitioner {
                       size_t num_nn, int label_normalize,
                       float eta0, float lambda, float gamma,
                       int seed, int verbose);
+    float RunNeighbourExpansionEP(const std::vector<std::vector<int> > &labels_vec,
+                                std::vector<std::set<size_t> > &cluster_assign,
+                                size_t K, size_t num_nn, int label_normalize,
+                                float replication_factor, int seed, int verbose);
     size_t GetNearestCluster(const std::vector<std::pair<int, float> > &datum) const;
     float GetNearestClusters(const std::vector<std::pair<int, float> > &datum,
                              std::vector<size_t> *centers) const;
