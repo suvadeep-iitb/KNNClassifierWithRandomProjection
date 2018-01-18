@@ -43,18 +43,21 @@ def MyNormalize(X, Xt, norm):
 params = {
   "numLearners": 1,
   "numThreads": 5,
+  "numThreads": 20,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
   "seed": 1,
   "logFile": '',
-  "maxTestSamples": 5000000,
+  "maxTestSamples": 100000,
   "maxTrainSamples": 600000}
 
 lambdaList = [0.1]
 #lambdaList = [1]
 nnTestList = [3, 5, 10, 20]
 embDimList = [100]
+nnTestList = [5, 10, 20]
+embDimList = [50]
 maxTS = [0]
 
 for i in [18]:
@@ -111,15 +114,17 @@ for i in [18]:
                          nnTestList,
                          params['maxTestSamples'],
                          max(params['numThreads'], 40))
+                         max(params['numThreads'], 30))
         '''
         trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
                          nnTestList,
                          params['maxTestSamples'],
+<<<<<<< Updated upstream
                          max(params['numThreads'], 40))
+                         max(params['numThreads'], 30))
         '''
-        resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         #resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         #resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 

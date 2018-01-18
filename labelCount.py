@@ -51,4 +51,6 @@ labelStruct17 = LabelStruct(fileName="../DataSets/DeliciousLarge/deliciousLarge_
 
 labelStruct18 = LabelStruct(fileName="../DataSets/Amazon/amazon.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_amazon', initialFeatureProjMatrixFile='');
 
+labelStruct18 = LabelStruct(fileName="../DataSets/Amazon/amazon.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_amazon', initialFeatureProjMatrixFile='');
+
 labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12, labelStruct13, labelStruct14, labelStruct15, labelStruct16, labelStruct17, labelStruct18];

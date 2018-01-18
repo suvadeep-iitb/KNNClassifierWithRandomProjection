@@ -81,7 +81,7 @@ class Data:
     self.Yt = Yt
 
 
-for i in [6]:
+for i in [18]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print('Running for ' + dataFile)

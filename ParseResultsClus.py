@@ -6,6 +6,8 @@ nnTestList = [10]
 embDimList = [20]
 numClustersList = [35]
 
+embDimList = [20, 50]
+numClustersList = [35]
 
 for i in [6]:
     labelStruct = lc.labelStructs[i]
@@ -18,7 +20,7 @@ for i in [6]:
           bestPrecisionTrain = [-1]*5;
           bestLambda = 0;
           for lamb in lambdaList:
-            resFile = 'Results/ClusteredRandProj_'+resFilePrefix+'_TS50000'+'_CL'+str(nc)+'_L'+str(lamb)+'_D'+str(ed)+'.pkl'
+            resFile = 'Results/ClusteredRandProj_'+resFilePrefix+'_TS100000'+'_CL'+str(nc)+'_L'+str(lamb)+'_D'+str(ed)+'.pkl'
             res = pickle.load(open(resFile, 'rb'))
             if bestPrecision[0] < res['testRes'][nn]['precision'][0]:
               bestPrecision = res['testRes'][nn]['precision']

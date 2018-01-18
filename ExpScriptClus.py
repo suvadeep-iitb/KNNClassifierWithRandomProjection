@@ -5,8 +5,7 @@ from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
 #from sklearn.cluster import KMeans as kmeans
 from sklearn.cluster import MiniBatchKMeans as kmeans
-from sklearn.cluster import KMeans as kmeans
-#from sklearn.cluster import MiniBatchKMeans as kmeans
+from MyCluster import NearestNeighbour
 import labelCount as lc
 #from MultipleOrthogonalBinaryClusteringAKNNPredictor import MultipleOrthogonalBinaryClusteringAKNNPredictor as KNNPredictor
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
@@ -60,7 +59,7 @@ def PerformExperiment(p, data):
   nc = p['numClusters']
   nt = p['numThreads']
   #print("Running for " + "mu1 = " + str(mu1)  + " mu2 = " + str(mu2) + " mu3 = " + str(mu3) + " mu4 = " + str(mu4) + " emb_dim = " + str(ed) + "  iter = " + str(it));
-  print("Running for train_sam = " + str(ts) + " lambda = " + str(lamb)  + " emb_dim = " + str(ed) + " # clusters = " + str(nc));
+  print("Running for train_sam = " + str(ts) + " lambda = " + str(lamb)  + " emb_dim = " + str(ed) + " # of clusters = " + str(nc));
 
   knnPredictor = ClusteredKNNPredictor(p)
   newParam = p.copy()
@@ -86,6 +85,7 @@ def PerformExperiment(p, data):
   '''
   #resFile = 'Results/ClusteredMOBCAP_'+p['resFilePrefix']+'_TS'+str(ts)+'_CL'+str(nc)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)+'_IT'+str(it)+'.pkl'
   resFile = 'Results/ClusteredRandProj_'+p['resFilePrefix']+'_TS'+str(ts)+'_CL'+str(nc)+'_L'+str(lamb)+'_D'+str(ed)+'.pkl'
+  del p['clusteringAlgo']
   pickle.dump({'testRes' : testResList, 
                #'trainRes' : trainResList, 
                'nnTestList' : p['nnTestList'], 
@@ -102,6 +102,8 @@ params = {
   "numLearners": 1,
   "numClusters": 5,
   "numThreads": 10,
+  "numClusters": 3,
+  "numThreads": 20,
   #"embDim": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   #"mu1": 1,
@@ -110,7 +112,7 @@ params = {
   #"mu4": 1,
   #"innerIter": 8,
   #"outerIter": 3,
-  "seed": 2,
+  "seed": 1,
   "logFile": '',
   "maxTestSamples": 5000000,
   #"maxTrainSamples": 600000,
@@ -130,6 +132,11 @@ numClustersList = [35]
 lambdaList = [0.01, 0.1]
 
 maxTS = [20000, 50000]
+embDimList = [20, 50]
+numClustersList = [35]
+lambdaList = [0.01]
+
+maxTS = [25000, 50000, 100000]
 
 for i in [6]:
   labelStruct = lc.labelStructs[i]
@@ -139,6 +146,7 @@ for i in [6]:
   # For related search data, feature matrix in dense
 
   # Perform initial random permutation of the data
+  '''
   print("Randomly permuting the data ...")
   perm = np.random.permutation(data.X.shape[0])
   data.X = data.X[perm, :]
@@ -147,6 +155,7 @@ for i in [6]:
   perm = np.random.permutation(data.Xt.shape[0])
   data.Xt = data.Xt[perm, :]
   data.Yt = data.Yt[perm, :]
+  '''
 
   # Remove label with no sample
   labelCounts = np.array(np.sum(data.Y, axis=0)).reshape(-1)
@@ -167,18 +176,19 @@ for i in [6]:
     for ts in maxTS:
       for numClusters in numClustersList:
         for lamb in lambdaList:
-          if ((numClusters == 35 and lamb == 0.1) or (numClusters == 300 and lamb == 0.01)):
-            continue
           newParams = params.copy()
           newParams['maxTrainSamples'] = ts
           newParams['lamb'] = lamb
           newParams['numClusters'] = numClusters
-          newParams["embDim"] = ed
-          newParams['clusteringAlgo'] = kmeans(n_clusters = numClusters,
-                                               init = 'random',
-                                               n_init = 3,
-                                               max_iter = 10,
-                                               n_jobs = 3)
+          newParams['embDim'] = ed
+          newParams['clusteringAlgo'] = NearestNeighbour(n_clusters = numClusters,
+                                                         max_iter = 10,
+                                                         num_nn = 10,
+                                                         label_normalize = 1,
+                                                         eta0 = 0.1,
+                                                         lamb = 4.0,
+                                                         seed = newParams['seed'],
+                                                         verbose = 1)
           newParams['basePredictor'] = KNNPredictor(newParams)
           newParams["logFile"] = ''#'Results/MOBCAP_'+params['resFilePrefix']+'_log_TS'+str(ts)+'_MU1'+str(mu1)+'_MU2'+str(mu2)+'_MU3'+str(mu3)+'_MU4'+str(mu4)+'_D'+str(ed)+'_IT'+str(it)
           paramList.append(newParams)
