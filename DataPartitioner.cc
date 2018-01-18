@@ -20,8 +20,10 @@
 #include <cfloat>
 #include <cstdio>
 #include <vector>
+#include <set>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "Utils.h"
 #include "Reindexer.h"
@@ -49,6 +51,15 @@ class HashMatrix {
     size_t cols_;
     size_t mask_;
     std::vector<float> vals_;
+};
+
+struct FindNode {
+  FindNode(size_t nid) : nid(nid) {}
+
+  bool operator()(std::pair<size_t, float> const & p)
+  { return (p.first == nid);}
+
+  size_t nid;
 };
 
 inline float sigmoid(float x) {
@@ -249,6 +260,166 @@ void get_positives(
   if (verbose > 0) { fprintf(stderr, "\rget_positives done!\n"); }
 }
 
+void get_edge_set(
+    std::vector<std::set<size_t> > &nn_graph, 
+    std::set<size_t> &cluster_assignment, 
+    std::set<size_t> &left_vertices, 
+    float delta_min,
+    float delta_max)
+{
+    std::set<size_t> C;
+    std::set<size_t> S;
+    size_t edge_count = 0;
+
+    while (edge_count <= delta_max) {
+      std::set<size_t> diff;
+      std::set_difference(S.begin(), S.end(), C.begin(), C.end(),
+                          std::inserter(diff, diff.begin()));
+      size_t x;
+      if (diff.size() == 0) {
+        if ((left_vertices.size() == 0) || (edge_count >= delta_min))
+          return;
+        size_t r = rand() % left_vertices.size();
+        std::set<size_t>::const_iterator it(left_vertices.begin());
+        std::advance(it, r);
+        x = *it;
+      }
+      else {
+        float min_val = nn_graph.size();
+        for (auto&& it: diff) {
+          size_t cur_node = it;
+          float val = 0;
+          auto s = S.begin();
+          auto p = nn_graph[cur_node].begin();
+          while(p != nn_graph[cur_node].end()) {
+            if (s == S.end()) break;
+            if (*p < *s) {
+              val += 1;
+              p++;
+            }
+            else if (*s < *p) { s++; }
+            else {s++; p++;}
+          }
+
+          if (val < min_val) {
+            min_val = val;
+            x = cur_node;
+          }
+        }
+      }
+
+      // AllocEdges
+      C.insert(x);
+      S.insert(x);
+      left_vertices.erase(x);
+      std::set<size_t> yset;
+      std::set_difference(nn_graph[x].begin(), nn_graph[x].end(), 
+                          S.begin(), S.end(),
+                          std::inserter(yset, yset.begin()));
+
+      for (auto&& y: yset) {
+        std::set<size_t> zset;
+        std::set_intersection(nn_graph[y].begin(), nn_graph[y].end(),
+                              S.begin(), S.end(),
+                              std::inserter(zset, zset.begin()));
+        for (auto z: zset) {
+          edge_count++;
+          cluster_assignment.insert(y);
+          cluster_assignment.insert(z);
+          auto res = std::find(nn_graph[y].begin(), nn_graph[y].end(), z);
+          nn_graph[y].erase(res);
+          res = std::find(nn_graph[z].begin(), nn_graph[z].end(), y);
+          nn_graph[z].erase(res);
+          if (edge_count > delta_max)
+            return;
+        }
+      }
+    }
+}
+
+void get_edge_set(
+    std::vector<std::vector<std::pair<size_t, float> > > &nn_graph, 
+    std::set<size_t> &cluster_assignment, 
+    std::set<size_t> &left_vertices, 
+    float delta_min,
+    float delta_max)
+{
+    std::set<size_t> C;
+    std::set<size_t> S;
+    size_t edge_count = 0;
+
+    while (edge_count <= delta_max) {
+      std::set<size_t> diff;
+      std::set_difference(S.begin(), S.end(), C.begin(), C.end(),
+                          std::inserter(diff, diff.begin()));
+      size_t x;
+      if (diff.size() == 0) {
+        if ((left_vertices.size() == 0) || (edge_count >= delta_min))
+          return;
+        size_t r = rand() % left_vertices.size();
+        std::set<size_t>::const_iterator it(left_vertices.begin());
+        std::advance(it, r);
+        x = *it;
+      }
+      else {
+        float min_val = nn_graph.size();
+        for (auto&& it: diff) {
+          size_t cur_node = it;
+          float val = 0;
+          auto s = S.begin();
+          auto p = nn_graph[cur_node].begin();
+          while(p != nn_graph[cur_node].end()) {
+            if (s == S.end()) break;
+            if (p->first < *s) {
+              val += p->second;
+              p++;
+            }
+            else if (*s < p->first) { s++; }
+            else {s++; p++;}
+          }
+
+          if (val < min_val) {
+            min_val = val;
+            x = cur_node;
+          }
+        }
+      }
+
+      // AllocEdges
+      C.insert(x);
+      S.insert(x);
+      left_vertices.erase(x);
+      std::set<size_t> yset;
+      for (auto&& ity: nn_graph[x]) {
+        size_t y = ity.first;
+        if(std::find(S.begin(), S.end(), y) == S.end()) {
+          S.insert(y);
+          yset.insert(y);
+        }
+      }
+
+      for (auto&& y: yset) {
+        std::set<size_t> zset;
+        for (auto&& itz: nn_graph[y]) zset.insert(itz.first);
+        for (auto z: zset) {
+          if (std::find(S.begin(), S.end(), z) == S.end())
+            continue;
+          
+          edge_count++;
+          cluster_assignment.insert(y);
+          cluster_assignment.insert(z);
+          auto res = std::find_if(nn_graph[y].begin(), nn_graph[y].end(),
+                               FindNode(z));
+          nn_graph[y].erase(res);
+          res = std::find_if(nn_graph[z].begin(), nn_graph[z].end(),
+                               FindNode(y));
+          nn_graph[z].erase(res);
+          if (edge_count > delta_max)
+            return;
+        }
+      }
+    }
+}
 
 void sampling_negatives_uniform(
     const std::vector<std::vector<int> > &labels_vec,
@@ -264,6 +435,25 @@ void sampling_negatives_uniform(
     neg_vec->push_back(std::make_pair(idx, 0.0f));
   }
 }
+
+
+void insert_pair(std::vector<std::pair<size_t, float> > &vec,
+            std::pair<size_t, float> p)
+{
+  std::vector<std::pair<size_t, float> >::iterator it;
+  for (it = vec.begin(); it < vec.end(); ++it) {
+    if (it->first == p.first) {
+      it->second += p.second;
+      break;
+    }
+  }
+  if (it == vec.end())
+    vec.push_back(std::make_pair(p.first, p.second));
+}
+
+
+bool comp(std::pair<size_t, float> p1, std::pair<size_t, float> p2)
+{ return (p1.first < p2.first); }
 
 
 DataPartitioner::DataPartitioner() {};
@@ -472,6 +662,104 @@ float DataPartitioner::RunPairwise(const std::vector<std::vector<std::pair<int, 
   }
 
   return prev_obj_value;
+}
+
+
+float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<int> > &labels_vec,
+                                             std::vector<std::set<size_t> > &cluster_assign,
+                                             size_t K, size_t num_nn, int label_normalize,
+                                             float replication_factor, int seed, int verbose) 
+{
+  if (verbose > 0) {
+    fprintf(stderr, "#data: %lu, K: %lu, seed: %d\n", labels_vec.size(), K, seed);
+  }
+
+  srand(seed);
+  size_t cost_per_sample = 5000;
+
+  if (K == 1) {
+    if (verbose > 0) { fprintf(stderr, "\rPartitioning skip!\n"); }
+    cluster_assign.resize(1);
+    for (auto i = 0; i < labels_vec.size(); i++)
+      cluster_assign[0].insert(i);
+    return 0.0;
+  }
+
+  std::vector<std::vector<std::pair<size_t, float> > > pos_vec(labels_vec.size());
+
+  get_positives(labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &pos_vec);
+
+  // create a symmtric nn graph
+  std::vector<std::vector<std::pair<size_t, float> > > nn_graph(labels_vec.size());
+  for (auto i = 0; i < pos_vec.size(); ++i) {
+    std::unordered_set<size_t> vset;
+    for (auto&& p: pos_vec[i]) {
+      if (std::find(vset.begin(), vset.end(), p.first) != vset.end())
+        continue;
+      vset.insert(p.first);
+      insert_pair(nn_graph[i], p);
+      insert_pair(nn_graph[p.first], std::make_pair(i, p.second));
+    }
+  }
+  pos_vec.clear();
+
+  // sort the nn graph
+  for (auto&& vec: nn_graph)
+    std::sort(vec.begin(), vec.end(), comp);
+
+  size_t pair_num = 0;
+  float edge_weight = 0;
+  for (size_t i = 0; i < nn_graph.size(); ++i) { 
+    pair_num += nn_graph[i].size();
+    for (auto&& p: nn_graph[i])
+      edge_weight += p.second;
+  }
+  // devide the edge count by 2 as each edge has been counted twice
+  pair_num /= 2;
+  edge_weight /= 2;
+
+  if (verbose > 0) {
+    fprintf(stderr, "# of nn graph edges: %lu (%.2f%%)\n", pair_num, 100.0 * 2 * pair_num / num_nn / labels_vec.size());
+  }
+
+  // partition dataset by edge partitioning
+  cluster_assign.clear();
+  cluster_assign.resize(K);
+  std::set<size_t> left_vertices;
+  for (size_t i = 0; i < labels_vec.size(); ++i)
+    left_vertices.insert(i);
+
+  float delta_max = (replication_factor * pair_num) / K;
+  float delta_min = (float)labels_vec.size() / K;
+  for (auto k = 0; k < K; k++) {
+    get_edge_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max);
+    if (verbose > 0) {
+      fprintf(stderr, "cluster %d: sample size %lu\n", k, cluster_assign[k].size());
+    }
+  }
+
+  size_t pair_left = 0;
+  float cut_weight = 0;
+  for (auto&& vec: nn_graph) {
+    pair_left += vec.size();
+    for (auto&& p: vec)
+      cut_weight += p.second;
+  }
+  pair_left /= 2;
+  cut_weight /= 2;
+
+  float rep_factor = 0;
+  for (auto k = 0; k < K; k++)
+    rep_factor += cluster_assign[k].size();
+  rep_factor /= labels_vec.size();
+
+  if (verbose > 0) {
+    fprintf(stderr, "# of edges lost: %lu (%.2f%%), weight of graph cut: %f (%.2f%%)\n", pair_left, (100.0 * pair_left) / pair_num, cut_weight, (100.0 * cut_weight) / edge_weight);
+  }
+  
+  nn_graph.clear();
+
+  return rep_factor;
 }
 
 
