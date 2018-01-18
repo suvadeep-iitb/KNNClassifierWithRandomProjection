@@ -4,7 +4,6 @@ from collections import namedtuple
 import pickle
 from joblib import Parallel, delayed
 import multiprocessing
-import nmslib
 import math
 #from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
@@ -15,7 +14,7 @@ from MyQueue import myQueue
 from datetime import datetime
 from KNNPredictor import *
 from sklearn.metrics import mean_squared_error
-from sklearn.neighbors import NearestNeighbors
+#from sklearn.neighbors import NearestNeighbors
 
 
 
@@ -76,10 +75,7 @@ class MulticlassPredictor:
 
 
   def ComputeLabelScoreInner(self, Xt):
-    if (issparse(Xt)):
-      scoreYt = Xt * self.W;
-    else:
-      scoreYt = np.matmul(Xt, self.W)
+    scoreYt = self.EmbedFeature(Xt)
     predYt, scoreYt = SortCooMatrix(coo_matrix(scoreYt));
     return predYt, scoreYt
 
@@ -126,9 +122,9 @@ class MulticlassPredictor:
 
   def EmbedFeature(self, X, numThreads=1):
     if (issparse(X)):
-      pX = X * self.W
+      pX = X * self.W[:-1, :] + self.W[-1, :]
     else:
-      pX = np.matmul(X, self.W);
+      pX = np.matmul(X, self.W[:-1, :]) + self.W[-1, :];
     return pX
 
 
@@ -145,11 +141,12 @@ class MulticlassPredictor:
     resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Y[:, l], X, l, C) for l in range(L))
 
     # Collect the model parameters into a matrix
-    W = np.zeros((D, L), dtype=np.float);
-    for l in range(L):    
-      W[:, l] = resultList[l][0]
+    W = np.zeros((D+1, 0), dtype=np.float);
+    for l in range(L):
+      coeff = np.vstack((resultList[l][0].reshape((-1, 1)), resultList[l][1].reshape(1, 1)))    
+      W = np.hstack((W, coeff))
     avgTrainError = sum([resultList[l][1] for l in range(L)])/L
-    print("Total training Error: "+str(avgTrainError))
+    print("Mean training Error: "+str(avgTrainError))
  
     self.W = W
     self.trainError = avgTrainError
@@ -158,10 +155,7 @@ class MulticlassPredictor:
 
   def MeanSquaredError(self, X, Y, maxSamples):
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
-    if (issparse(X)):
-      Yscore = Xsam*self.W
-    else:
-      Yscore = np.matmul(Xsam, self.W)
+    Yscore = self.EmbedFeature(Xsam)
     return mean_squared_error(Ysam, Yscore)
 
 
@@ -179,12 +173,13 @@ def TrainWrapper(Z, X, l, C):
   '''
   model = LinearSVC(dual=False,
                     C=C,
-                    fit_intercept=False)
+                    fit_intercept=True)
   model.fit(X, Z.toarray().reshape(-1))
   trainError = mean_squared_error(Z.toarray().reshape(-1), model.predict(X))
   print("Completed training for label: "+str(l)+" . Training error: "+str(trainError))
 
-  return (model.coef_, trainError)
+  return (model.coef_, model.intercept_, trainError)
+
 
 
 def ComputePrecisionInner(predYt, Yt, K):
@@ -199,8 +194,4 @@ def ComputePrecisionInner(predYt, Yt, K):
           precision[k, 0] += 1/float(k+1)
   precision /= float(nt)
   return precision
-
-
-
-
 
