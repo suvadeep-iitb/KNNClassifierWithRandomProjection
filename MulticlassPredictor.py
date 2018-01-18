@@ -145,7 +145,7 @@ class MulticlassPredictor:
     for l in range(L):
       coeff = np.vstack((resultList[l][0].reshape((-1, 1)), resultList[l][1].reshape(1, 1)))    
       W = np.hstack((W, coeff))
-    avgTrainError = sum([resultList[l][1] for l in range(L)])/L
+    avgTrainError = sum([resultList[l][2] for l in range(L)])/L
     print("Mean training Error: "+str(avgTrainError))
  
     self.W = W
