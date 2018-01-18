@@ -269,6 +269,7 @@ void get_edge_set(
 {
     std::set<size_t> S_minus_C;
     std::unordered_set<size_t> S;
+    std::unordered_set<size_t> clus_ass;
     size_t edge_count = 0;
 
     while (edge_count <= delta_max) {
@@ -276,7 +277,7 @@ void get_edge_set(
       size_t x;
       if (S_minus_C.size() == 0) {
         if ((left_vertices.size() == 0) || (edge_count >= delta_min))
-          return;
+          break;
         size_t r = rand() % left_vertices.size();
         std::set<size_t>::const_iterator it(left_vertices.begin());
         std::advance(it, r);
@@ -316,8 +317,8 @@ void get_edge_set(
           if (S.find(z) == S.end()) continue;
 
           edge_count++;
-          cluster_assignment.insert(y);
-          cluster_assignment.insert(z);
+          clus_ass.insert(y);
+          clus_ass.insert(z);
 
           auto res = std::find(nn_graph[y].begin(), nn_graph[y].end(), z);
           if (res != nn_graph[y].end()) nn_graph[y].erase(res);
@@ -327,6 +328,9 @@ void get_edge_set(
         }
       }
     }
+
+    // copy each element of clus_ass into cluster_assignment
+    for (auto&& nn: clus_ass) cluster_assignment.insert(nn);
 }
 
 void get_edge_set(
@@ -728,10 +732,11 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
 
 #if SYM
   float delta_max = (replication_factor * pair_num) / (K * 2);
+  float delta_min = (float)pair_num / (K * 2);
 #else
   float delta_max = (replication_factor * pair_num) / K;
+  float delta_min = (float)pair_num / K;
 #endif
-  float delta_min = (float)labels_vec.size() / K;
   for (auto k = 0; k < K; k++) {
     get_edge_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max);
     if (verbose > 0) {

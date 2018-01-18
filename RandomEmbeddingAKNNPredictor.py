@@ -74,7 +74,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     if (issparse(X)):
       pX = X * self.featureProjMatrix
     else:
-      pX = np.matmul(X, self.featureProjMatrix);
+      pX = np.matmul(X, self.featureProjMatrix)
     return pX
 
 
@@ -109,10 +109,10 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     print("Mean training Error: "+str(avgTrainError))
 
     # Collect the model parameters into a matrix
-    W = np.reshape(resultList[0][0], (D, 1))
+    W = np.reshape(resultList[0][0], (-1, 1))
     del resultList[0]
     for l in range(embDim-1):
-      W = np.hstack((W, np.reshape(resultList[0][0], (D, 1))))
+      W = np.hstack((W, np.reshape(resultList[0][0], (-1, 1))))
       del resultList[0]
     self.featureProjMatrix = W
     #self.labelProjMatrix = R
@@ -197,7 +197,7 @@ def TrainWrapper(Z, X, l, C):
                     C=C, 
                     loss='squared_epsilon_insensitive', 
                     dual=False, 
-                    fit_intercept=False)
+                    fit_intercept=True)
   model.fit(X, Z.reshape(-1))
   trainError = mean_squared_error(Z.reshape(-1), model.predict(X))
   print("Completed training for label: "+str(l)+" . Training error: "+str(trainError))

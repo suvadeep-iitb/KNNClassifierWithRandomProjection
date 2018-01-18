@@ -1,11 +1,19 @@
 import pickle
 import labelCount as lc
 
+<<<<<<< Updated upstream
 lambdaList = [0.0001, 0.001, 0.01, 0.1]
 nnTestList = [10]
 embDimList = [20, 50]
 
 for i in [18]:
+=======
+lambdaList = [0.01, 0.1]
+nnTestList = [10, 20]
+embDimList = [20, 50]
+
+for i in [1, 2]:
+>>>>>>> Stashed changes
     labelStruct = lc.labelStructs[i]
     
     resFilePrefix = labelStruct.resFile

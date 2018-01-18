@@ -2,8 +2,8 @@ import pickle
 import numpy as np
 from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
-#from sklearn.cluster import KMeans as kmeans
-from sklearn.cluster import MiniBatchKMeans as kmeans
+from sklearn.cluster import KMeans as kmeans
+#from sklearn.cluster import MiniBatchKMeans as kmeans
 import labelCount as lc
 from joblib import Parallel, delayed
 import multiprocessing
@@ -30,8 +30,10 @@ def LoadData(i):
 def GetClusterLabelStatistic(X, Y, numClusters):
   nLabels = Y.shape[1]
   print("Performing clustering")
-  clusters = kmeans(n_clusters = numClusters
-                    #, n_jobs = -1
+  clusters = kmeans(n_clusters = numClusters,
+                    n_init = 1,
+                    max_iter = 10,
+                    init = 'k-means++'
                     ).fit(X)
   clusterAssignments = clusters.labels_.reshape(-1)
   nClusters = np.max(clusterAssignments) + 1
@@ -55,10 +57,10 @@ def GetClusterLabelStatistic(X, Y, numClusters):
 
 
 if __name__ == '__main__':
-  for dId in [1, 2, 5, 14, 3]:
-    nClusList = [5, 10, 20, 50, 100]
+  for dId in [3]:
+    nClusList = [10]
     data = LoadData(dId)
-    numThreads = 5
+    numThreads = 1
     resList = Parallel(n_jobs = numThreads)(delayed(GetClusterLabelStatistic)(data.X, data.Y, nClus) for nClus in nClusList)
     #for nClus in [5, 10, 20, 50, 100]:
     #  cs, lf, clf, cls = GetClusterLabelStatistic(data.X, data.Y, nClus)
