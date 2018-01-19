@@ -28,6 +28,8 @@
 #include "Utils.h"
 #include "Reindexer.h"
 
+#define SYM 1
+
 const size_t mat_bit_size = 24;
 
 class HashMatrix {
@@ -323,8 +325,10 @@ void get_edge_set(
           auto res = std::find(nn_graph[y].begin(), nn_graph[y].end(), z);
           if (res != nn_graph[y].end()) nn_graph[y].erase(res);
 
+#if SYM
           res = std::find(nn_graph[z].begin(), nn_graph[z].end(), y);
           if (res != nn_graph[z].end()) nn_graph[z].erase(res);
+#endif
         }
       }
     }
@@ -685,7 +689,6 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
 
   get_positives(labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &pos_vec);
 
-#define SYM 1
 #if SYM
   // create a symmetric nn graph
   std::vector<std::set<size_t> > nn_graph(labels_vec.size());
