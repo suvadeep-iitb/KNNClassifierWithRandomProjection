@@ -37,9 +37,10 @@ def MyNormalize(X, Xt, norm):
   return XXt[:n, :], XXt[n:, :]
 
 
-for i in [6]:
+for i in [4]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
+  resFile = labelStruct.resFile
   print("Running for " + dataFile)
   data = pickle.load(open(dataFile, 'rb'))
   
@@ -64,18 +65,19 @@ for i in [6]:
   # Normalize data
   data.X, data.Xt = MyNormalize(data.X, data.Xt, 'l2_row')
 
-
-  nnClus = ClusAlgo(n_clusters = 35,
-                    n_init = 1,
-                    num_nn = 10,
-                    rep_factor = 1.1,
-                    label_normalize = 1,
-                    C = 1.0,
-                    max_iter_svc = 50,
-                    seed = 1,
-                    verbose = 1,
-                    log_file = '',
-                    n_jobs = 20)
-  nnClus.fit(data.X, data.Y)
-  pickle.dump(nnClus.centers_, open('centers.pkl', 'wb'))
+  for s in range(2, 7):
+    nnClus = ClusAlgo(n_clusters = 10,
+                      n_init = 1,
+                      num_nn = 10,
+                      rep_factor = 1.1,
+                      label_normalize = 1,
+                      C = 1.0,
+                      max_iter_svc = 50,
+                      seed = s,
+                      verbose = 1,
+                      log_file = '',
+                      res_file = resFile,
+                      n_jobs = 10)
+    nnClus.fit(data.X, data.Y)
+    pickle.dump(nnClus.centers_, open(resFile+'_centers_'+str(s)+'.pkl', 'wb'))
  

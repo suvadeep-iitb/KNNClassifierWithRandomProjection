@@ -244,6 +244,7 @@ class LabelNeighbourExpensionEP(LabelRand):
                seed,
                verbose,
                log_file,
+               res_file,
                n_jobs):
     self.n_clusters_ = n_clusters
     self.n_init_ = n_init
@@ -254,6 +255,7 @@ class LabelNeighbourExpensionEP(LabelRand):
     self.seed_ = seed
     self.verbose_ = verbose
     self.log_file_ = log_file
+    self.res_file_ = res_file
     self.label_normalize_ = label_normalize
     self.n_jobs_ = n_jobs
     self.log_ = ''
@@ -280,7 +282,7 @@ class LabelNeighbourExpensionEP(LabelRand):
       print(str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels))))
       self.log_ += str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels)))+'\n'
     self.cluster_assignments_ = csr_matrix(self.cluster_assignments_)
-    pickle.dump(self.cluster_assignments_, open('clus_ass.pkl', 'wb'));
+    pickle.dump(self.cluster_assignments_, open(self.res_file_+'_clus_ass_'+str(self.seed_)+'.pkl', 'wb'));
 
 
 
