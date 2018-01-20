@@ -8,7 +8,6 @@ from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.svm import LinearSVC
 from MulticlassPredictor import MulticlassPredictor
 from datetime import datetime
-import minmax_kmeans as mmkmeans
 #import minmax_kmeans as mmkmeans
 import pickle
 

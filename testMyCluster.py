@@ -80,4 +80,3 @@ for i in [4]:
                       n_jobs = 10)
     nnClus.fit(data.X, data.Y)
     pickle.dump(nnClus.centers_, open(resFile+'_centers_'+str(s)+'.pkl', 'wb'))
- 
