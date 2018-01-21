@@ -267,7 +267,8 @@ void get_edge_set(
     std::set<size_t> &cluster_assignment, 
     std::set<size_t> &left_vertices, 
     float delta_min,
-    float delta_max)
+    float delta_max,
+    std::mt19937 &rnd_gen)
 {
     std::set<size_t> S_minus_C;
     std::unordered_set<size_t> S;
@@ -280,7 +281,7 @@ void get_edge_set(
       if (S_minus_C.size() == 0) {
         if ((left_vertices.size() == 0) || (edge_count >= delta_min))
           break;
-        size_t r = rand() % left_vertices.size();
+        size_t r = rnd_gen() % left_vertices.size();
         std::set<size_t>::const_iterator it(left_vertices.begin());
         std::advance(it, r);
         x = *it;
@@ -342,7 +343,8 @@ void get_edge_set(
     std::set<size_t> &cluster_assignment, 
     std::set<size_t> &left_vertices, 
     float delta_min,
-    float delta_max)
+    float delta_max,
+    std::mt19937 &rnd_gen)
 {
     std::set<size_t> C;
     std::set<size_t> S;
@@ -356,7 +358,7 @@ void get_edge_set(
       if (diff.size() == 0) {
         if ((left_vertices.size() == 0) || (edge_count >= delta_min))
           return;
-        size_t r = rand() % left_vertices.size();
+        size_t r = rnd_gen() % left_vertices.size();
         std::set<size_t>::const_iterator it(left_vertices.begin());
         std::advance(it, r);
         x = *it;
@@ -674,7 +676,7 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
     fprintf(stderr, "#data: %lu, K: %lu, seed: %d\n", labels_vec.size(), K, seed);
   }
 
-  srand(seed);
+  std::mt19937 rnd_gen(seed);
   size_t cost_per_sample = 5000;
 
   if (K == 1) {
@@ -718,12 +720,16 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
   pos_vec.clear();
 
   size_t pair_num = 0;
+  size_t iso_vertex_num = 0;
   for (size_t i = 0; i < nn_graph.size(); ++i) { 
     pair_num += nn_graph[i].size();
+    if (nn_graph[i].size() == 0)
+      iso_vertex_num++;
   }
 
   if (verbose > 0) {
     fprintf(stderr, "# of nn graph edges: %lu (%.2f%%)\n", pair_num, 100.0 * pair_num / num_nn / labels_vec.size());
+    fprintf(stderr, "# of isolated vertices: %lu (%.2f%%)\n", iso_vertex_num, 100.0 * iso_vertex_num / labels_vec.size());
   }
 
   // partition dataset by edge partitioning
@@ -741,7 +747,7 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
   float delta_min = (float)pair_num / K;
 #endif
   for (auto k = 0; k < K; k++) {
-    get_edge_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max);
+    get_edge_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max, rnd_gen);
     if (verbose > 0) {
       fprintf(stderr, "cluster %d: sample size %lu\n", k, cluster_assign[k].size());
     }
