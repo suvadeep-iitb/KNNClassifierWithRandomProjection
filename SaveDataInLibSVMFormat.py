@@ -4,11 +4,12 @@ from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
 from collections import namedtuple
 import labelCount as lc
 from multiprocessing import Pool
+import sys
 
 
 
 def WriteDataInSVMLightFormat(X, Y, fileName):
-  print('  Writing into file ' + fileName)
+  print('Writing into file ' + fileName)
   nExamples = X.shape[0]
   nFeatures = X.shape[1]
   nLabels = Y.shape[1]
@@ -47,7 +48,6 @@ def ReadDataFromRelatedSearchFile(fileName):
 
 
 
-#Data = namedtuple("Data", "X Y Xt Yt")
 class Data:
   def __init__(self, X, Y, Xt, Yt):
     self.X = X
@@ -56,18 +56,11 @@ class Data:
     self.Yt = Yt
 
 
-for i in [6]:
-  labelStruct = lc.labelStructs[i]
-  dataFile = labelStruct.fileName
-  print('Running for ' + dataFile)
+if __name__ == '__main__':
+  pickleFile = sys.argv[1]
+  trainFile = sys.argv[2]
+  testFile = sys.argv[3]
 
-  filePrefix = dataFile[:-4]
-  trainFile = filePrefix + '_train.txt'
-  testFile = filePrefix + '_100K_test.txt'
-
-  data = pickle.load(open(dataFile, 'rb'))
-  perm = np.random.permutation(data.Xt.shape[0])
-  data.Xt = data.Xt[perm[:100000], :]
-  data.Yt = data.Yt[perm[:100000], :]
-  #WriteDataInSVMLightFormat(csr_matrix(data.X), data.Y, trainFile)
+  data = pickle.load(open(pickleFile, 'rb'))
+  WriteDataInSVMLightFormat(csr_matrix(data.X), data.Y, trainFile)
   WriteDataInSVMLightFormat(csr_matrix(data.Xt), data.Yt, testFile)
