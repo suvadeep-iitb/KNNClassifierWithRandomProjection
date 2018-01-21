@@ -4,11 +4,12 @@ from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
 from collections import namedtuple
 import labelCount as lc
 from multiprocessing import Pool
+import sys
 
 
 
 def ReadDataFromSVMLightFile(fileName):
-  print('  Reading file ' + fileName)
+  print('Reading file ' + fileName)
   with open(fileName) as fin:
     line = fin.readline().strip().split()
     nExamples = int(line[0])
@@ -71,8 +72,6 @@ def ReadDataFromRelatedSearchFile(fileName):
   return csr_matrix(M)
 
 
-
-#Data = namedtuple("Data", "X Y Xt Yt")
 class Data:
   def __init__(self, X, Y, Xt, Yt):
     self.X = X
@@ -81,63 +80,16 @@ class Data:
     self.Yt = Yt
 
 
-for i in [18]:
-  labelStruct = lc.labelStructs[i]
-  dataFile = labelStruct.fileName
-  print('Running for ' + dataFile)
-  
-  filePrefix = dataFile[:-4]
-  trainFile = filePrefix + '_train.txt'
-  testFile = filePrefix + '_test.txt'
+if __name__ == '__main__':
+  trainFile = sys.argv[1]
+  testFile = sys.argv[2]
+  pickleFile = sys.argv[3]
+
+  if pickleFile[-4:] != '.pkl':
+    pickleFile = pickleFile + '.pkl'
 
   X, Y = ReadDataFromSVMLightFile(trainFile)
   Xt, Yt = ReadDataFromSVMLightFile(testFile)
   
-  '''
-  datafile = '../DataSets/Delicious/Delicious_data.txt'
-  trSplit = '../DataSets/Delicious/delicious_trSplit.txt'
-  tstSplit = '../DataSets/Delicious/delicious_tstSplit.txt'
-  Xfull, Yfull = ReadDataFromSVMLightFile(datafile)
-  lines = open(trSplit).readlines()
-  lines = [l.strip().split() for l in lines]
-  trIdx = [[int(l)-1 for l in line] for line in lines]
-
-  lines = open(tstSplit).readlines()
-  lines = [l.strip().split() for l in lines]
-  tstIdx = [[int(l)-1 for l in line] for line in lines]
-
-  for i in range(10):
-    tr = []
-    for l in trIdx:
-      tr.append(l[i])
-    X = Xfull[tr, :]
-    Y = Yfull[tr, :]
-    te = []
-    for l in tstIdx:
-      te.append(l[i])
-    Xt = Xfull[te, :]
-    Yt = Yfull[te, :]
-
-    data = Data(X, Y, Xt, Yt)
-    #outputFile = filePrefix + '.pkl'
-    outputFile = '../DataSets/Delicious/delicious_'+str(i)+'.pkl'
-    pickle.dump(data, open(outputFile, 'wb'), pickle.HIGHEST_PROTOCOL)
-'''
-'''
-trainFtFile = '../DataSets/RelatedSearch/trn_ft_mat.txt'
-trainLblFile = '../DataSets/RelatedSearch/trn_lbl_mat.txt'
-testFtFile = '../DataSets/RelatedSearch/tst_ft_mat.txt'
-testLblFile = '../DataSets/RelatedSearch/tst_lbl_mat.txt'
-
-X = ReadDataFromRelatedSearchFile(trainFtFile)
-print("Train feature file reading done!")
-Y = ReadDataFromRelatedSearchFile(trainLblFile)
-print("Train label file reading done!")
-Xt = ReadDataFromRelatedSearchFile(testFtFile)
-print("Test feature file reading done!")
-Yt = ReadDataFromRelatedSearchFile(testLblFile)
-print("Test label file reading done!")
-'''
-
-data = Data(X = X, Y = Y, Xt = Xt, Yt = Yt)
-pickle.dump(data, open(dataFile, 'wb'), pickle.HIGHEST_PROTOCOL)
+  data = Data(X = X, Y = Y, Xt = Xt, Yt = Yt)
+  pickle.dump(data, open(pickleFile, 'wb'), pickle.HIGHEST_PROTOCOL)

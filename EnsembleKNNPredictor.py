@@ -31,14 +31,11 @@ class EnsembleKNNPredictor(RandomEmbeddingAKNNPredictor):
 
 
   def LearnParams(self, X, Y, itr, numThreads):
-    #numThreads = min(numThreads, int(multiprocessing.cpu_count()/2))
-    #Parallel(n_jobs = numThreads)(delayed(self.LearnParamsWrapper)(i, X, Y, itr, 1) for i in range(len(self.learnerList)))
     for i in range(len(self.learnerList)):
       self.learnerList[i].LearnParams(X, Y, itr, numThreads)
 
+
   def EmbedFeature(self, X, numThreads):
-    #numThreads = min(numThreads, int(multiprocessing.cpu_count()/2))
-    #pXList = Parallel(n_jobs = numThreads)(delayed(self.GetFeatureEmbeddingWrapper)(i, X) for i in range(len(self.learnerList)))
     pXList = []
     for i in range(len(self.learnerList)):
       pXList.append(self.learnerList[i].EmbedFeature(X))

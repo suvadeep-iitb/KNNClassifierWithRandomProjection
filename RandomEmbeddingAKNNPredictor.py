@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse, identity
-from collections import namedtuple
 import pickle
 from joblib import Parallel, delayed
 import multiprocessing
@@ -9,9 +8,6 @@ import math
 #from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.svm import LinearSVR, LinearSVC
-from MyThread import myThread
-import threading
-from MyQueue import myQueue
 from datetime import datetime
 from KNNPredictor import *
 from sklearn.metrics import mean_squared_error
@@ -66,7 +62,6 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
       if (len(nei[0]) < nnTest):
         print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
       AKNN[i, :] = nei[0]
-    #AKNN = self.graph.kneighbors(pXt, nnTest, return_distance = False)
     return AKNN
 
 
@@ -118,32 +113,6 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     #self.labelProjMatrix = R
     self.trainError = avgTrainError
   
-    '''
-    # Put the labels into the queue
-    queueLock = threading.Lock()
-    labelQueue = myQueue()
-    queueLock.acquire()
-    for l in range(embDim):
-      labelQueue.enqueue(l)
-    queueLock.release()
-
-    params = {"X": X, "Z": Z, "C": C, "W": W}
-
-    # Create new threads
-    threadList = []
-    for tID in range(numThreads):
-      thread = myThread(tID, labelQueue, queueLock, TrainWrapper, params)
-      thread.start()
-      threadList.append(thread)
-
-    # Wait for all threads to complete
-    for t in threadList:
-      t.join()
-
-    # Return the model parameter
-    return params["W"]
-    '''
-
 
   def CreateAKNNGraph(self, X, numThreads):
     # Get the embedding of X
@@ -152,14 +121,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     index = nmslib.init(method='hnsw', space='l2')
     index.addDataPointBatch(pX)
     index.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
-    '''
-    index = NearestNeighbors(n_neighbors = 10, radius = 5, 
-                             algorithm = 'auto', metric = 'l2',
-                             n_jobs = numThreads)
-    index.fit(pX)
-    '''
     return index
-
 
 
   def MeanSquaredError(self, X, Y, maxSamples):
@@ -171,22 +133,6 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
       Xemb = np.matmul(Xsam, self.featureProjMatrix)
     return mean_squared_error(Yemb, Xemb)
 
-
-
-'''
-def TrainWrapper(l, params):
-  X = params["X"]
-  Z = params["Z"][:, l]
-  C = params["C"]
-  
-  model = LinearSVR(epsilon=0.0, 
-                    C=C, 
-                    loss='squared_epsilon_insensitive', 
-                    dual=False, 
-                    fit_intercept=False)
-  model.fit(X, Z)
-  params["W"][:, l] = model.coef_
-'''
 
 
 def TrainWrapper(Z, X, l, C):
