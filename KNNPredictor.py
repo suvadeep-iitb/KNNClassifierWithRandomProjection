@@ -44,9 +44,9 @@ class KNNPredictor:
     
     # Predict labels for input data
     print(str(datetime.now()) + " : " + "Performing prediction")
-    predYt, scoreYt = self.ComputeLabelScore(knn, nnTest, numThreads)
+    predYt = self.ComputeLabelScore(knn, nnTest, numThreads)
 
-    return predYt, scoreYt
+    return predYt
 
 
 
@@ -61,12 +61,10 @@ class KNNPredictor:
   
     numCores = numThreads
     resultList = Parallel(n_jobs = numCores)(delayed(ComputeLabelScoreInner)(Y, KNN[s: e, :], nnTest) for s,e in zip(startIdx, endIdx))
-    predYt = vstack([tup[0] for tup in resultList], format='lil')
-    scoreYt = vstack([tup[1] for tup in resultList], format='lil')
+    predYt = vstack(resultList, format='lil')
 
     assert(predYt.shape[0] == nt)
-    assert(scoreYt.shape[0] == nt)
-    return predYt, scoreYt
+    return predYt
 
 
 
@@ -120,9 +118,9 @@ class KNNPredictor:
     for nnTest in nnTestList:
       # Predict labels for input data
       print(str(datetime.now()) + " : " + "Performing prediction for nnTest = " + str(nnTest))
-      predYt, scoreYt = self.ComputeLabelScore(knn, nnTest, numThreads)
+      predYt = self.ComputeLabelScore(knn, nnTest, numThreads)
 
-      # Compute precisions for impute data
+      # Compute precisions for input data
       print(str(datetime.now()) + " : " + "Computing precisions for nnTest = " + str(nnTest))
       precision = self.ComputePrecision(predYt, Yt, 5, numThreads)
       #resList.append({'Y': Yt, 'predY': predYt, 'scoreY': scoreYt, 'precision': precision, 'testSample': testSample})
@@ -147,22 +145,22 @@ def ComputeLabelScoreInner(Y, KNN, nnTest):
   KNN = KNN[:, :nnTest]
   nt = KNN.shape[0]
   L = Y.shape[1]
-  scoreYt = lil_matrix((nt, L));
+  predYt = lil_matrix((nt, L));
   for i in range(nt):
-    scoreYt[i, :] = np.mean(Y[KNN[i, :], :], axis = 0)
-  predYt, scoreYt = SortCooMatrix(coo_matrix(scoreYt));
-  return predYt, scoreYt
+    predYt[i, :] = np.mean(Y[KNN[i, :], :], axis = 0)
+  return predYt
 
 
 
 def ComputePrecisionInner(predYt, Yt, K):
   assert(predYt.shape == Yt.shape)
+  sortedYt, _ = SortCooMatrix(coo_matrix(predYt))
   nt = Yt.shape[0]
   precision = np.zeros((K, 1), dtype=np.float)
   for i in range(Yt.shape[0]):
     nzero = Yt[i, :].getnnz()
     for j in range(min(nzero, K)):
-      if (Yt[i, predYt[i, j]] > 0):
+      if (Yt[i, sortedYt[i, j]] > 0):
         for k in range(j, K):
           precision[k, 0] += 1/float(k+1)
   precision /= float(nt)

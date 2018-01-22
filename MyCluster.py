@@ -137,51 +137,32 @@ class LabelRand:
   def __init__(self,
                n_clusters,
                n_init,
-               max_iter_kmeans,
                C,
                max_iter_svc,
                seed,
                verbose,
                log_file,
-               label_normalize,
-               alpha,
                n_jobs):
     self.n_clusters_ = n_clusters
     self.n_init_ = n_init
-    self.max_iter_kmeans_ = max_iter_kmeans
     self.C_ = C
     self.max_iter_svc_ = max_iter_svc
     self.seed_ = seed
     self.verbose_ = verbose
     self.log_file_ = log_file
-    self.label_normalize_ = label_normalize
-    self.alpha_ = alpha
     self.n_jobs_ = n_jobs
     self.log_ = ''
 
 
   def cluster_labels(self, X, Y):
-    self.base_clusters_ = KMeans(n_clusters = self.n_clusters_,
-                                 n_init = self.n_init_,
-                                 max_iter = self.max_iter_kmeans_,
-                                 random_state = self.seed_,
-                                 verbose = self.verbose_,
-                                 n_jobs = self.n_jobs_)
-    label_freq = np.array(np.sum(Y, axis = 0)).reshape(-1)
-    freq_cutoff = self.alpha_ * Y.shape[0]
-    Y = Y[:, label_freq < freq_cutoff]
-    print(str(np.sum(label_freq > freq_cutoff))+' labels have been removed during clustering')
-    self.log_ += str(np.sum(label_freq > freq_cutoff))+' labels have been removed during clustering\n'
     Y = csr_matrix(Y)
-    if (self.label_normalize_):
-      Y = normalize(Y, norm = 'l2', axis = 0)
 
     labels = np.array([i % self.n_clusters_ for i in range(Y.shape[1])])
     labels = np.random.permutation(labels)
     self.cluster_assignments_ = []
     for cid in range(self.n_clusters_):
       sel_labels = (labels == cid)
-      cl_ass = csr_matrix(np.sum(Y[:, sel_labels], axis=1) > 0.0).reshape(-1, 1)
+      cl_ass = csr_matrix((np.sum(Y[:, sel_labels], axis=1) > 0.0).reshape(-1, 1))
       self.cluster_assignments_.append(cl_ass)
       print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels)))
       self.log_ += str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels))+'\n'
@@ -200,7 +181,7 @@ class LabelRand:
     print(str(datetime.now())+' : Learning predictor for each cluster')
     self.log_ += str(datetime.now())+' : Learning predictor for each cluster\n'
 
-    Xtr, Xte, Ytr, Yte = train_test_split(X, self.cluster_assignments_, test_size = 0.1, random_state = self.seed_)
+    Xtr, Xte, Ytr, Yte = train_test_split(X, self.cluster_assignments_, test_size = 0.2, random_state = self.seed_)
     self.clf_.Train(Xtr, Ytr, numThreads = self.n_jobs_)
 
     labels, _ = self.clf_.Predict(Xtr, numThreads = self.n_jobs_)
