@@ -3,6 +3,7 @@ import numpy as np
 from scipy.sparse import csr_matrix, vstack, issparse
 from sklearn.preprocessing import normalize
 from MyCluster import LabelNeighbourExpensionEP as ClusAlgo
+#from MyCluster import LabelRand as ClusAlgo
 import labelCount as lc
 
 
@@ -37,7 +38,7 @@ def MyNormalize(X, Xt, norm):
   return XXt[:n, :], XXt[n:, :]
 
 
-for i in [4]:
+for i in [19]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   resFile = labelStruct.resFile
@@ -64,19 +65,23 @@ for i in [4]:
 
   # Normalize data
   data.X, data.Xt = MyNormalize(data.X, data.Xt, 'l2_row')
-
-  for s in range(2, 7):
-    nnClus = ClusAlgo(n_clusters = 10,
-                      n_init = 1,
-                      num_nn = 10,
-                      rep_factor = 1.1,
-                      label_normalize = 1,
-                      C = 1.0,
-                      max_iter_svc = 50,
-                      seed = s,
-                      verbose = 1,
-                      log_file = '',
-                      res_file = resFile,
-                      n_jobs = 10)
-    nnClus.fit(data.X, data.Y)
-    pickle.dump(nnClus.centers_, open(resFile+'_centers_'+str(s)+'.pkl', 'wb'))
+ 
+  for num_nn in [10]:
+    for s in range(2):
+      for c in [1]:
+        print("Running for S = "+str(s)+" C = "+str(c))
+        clus_ass_file = ''#'ClusterCenters/NEEP_DeliciousLarge/res_deliciousLarge_clus_ass_'+str(s)+'.pkl'
+        nnClus = ClusAlgo(n_clusters = 16,
+                          n_init = 1,
+                          num_nn = num_nn,
+                          rep_factor = 1.1,
+                          label_normalize = 1,
+                          C = c,
+                          max_iter_svc = 50,
+                          seed = s,
+                          verbose = 1,
+                          res_file = resFile+'_clus_ass_S'+str(s)+'_NN'+str(num_nn)+'_C'+str(c)+'.pkl',
+                          #clus_ass_file = clus_ass_file,
+                          n_jobs = 16)
+        nnClus.cluster_labels(data.X, data.Y)
+        #pickle.dump(nnClus.centers_, open(resFile+'_centers_S'+str(s)+'_NN'+str(num_nn)+'_C'+str(c)+'.pkl', 'wb'))

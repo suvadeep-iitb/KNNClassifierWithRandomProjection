@@ -12,20 +12,23 @@ from datetime import datetime
 import pickle
 
 
-'''
 class NearestNeighbour:
   def __init__(self,
                n_clusters,
-               max_iter,
-               seed,
-               verbose,
-               num_nn,
-               label_normalize,
-               eta0,
-               lamb):
+               n_init = 1,
+               max_iter = 10,
+               num_nn = 10,
+               label_normalize = 1,
+               seed = 1,
+               log_file = '',
+               verbose = 1,
+               eta0 = 0.1,
+               lamb = 4.0):
     self.n_clusters_ = n_clusters
+    self.n_init_ = n_init
     self.max_iter_ = max_iter
     self.seed_ = seed
+    self.log_file_ = log_file
     self.verbose_ = verbose
     self.num_nn_ = num_nn
     self.label_normalize_ = label_normalize
@@ -38,6 +41,14 @@ class NearestNeighbour:
     centers = pickle.load(open(filename, 'rb'))
     self.dataPartitioner_.clear()
     self.dataPartitioner_ = DP(centers)
+
+
+  def update_seed(self, seed):
+    self.seed_ = seed
+
+
+  def update_log_file(self, log_file):
+    self.log_file_ = log_file
 
 
   def fit(self, X, Y):
@@ -70,6 +81,14 @@ class NearestNeighbour:
                                       self.verbose_)
     self.labels_ = np.zeros((X.shape[0]), dtype=np.int32)
     self.dataPartitioner_.GetNearestClusters(X_indices, X_data, X_indptr, self.labels_)
+    print(str(datetime.now())+' : Final cluster assignments:')
+    self.Y_ = []
+    for cid in range(self.n_clusters_):
+      cl_ass = np.array(self.labels_ == cid).reshape(-1)
+      sel_labels = (np.sum(Y[cl_ass, :], axis = 0) > 0)
+      self.Y_.append(sel_labels)
+      print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels)))
+
 
 
   def predict(self, X):
@@ -91,7 +110,7 @@ class NearestNeighbour:
     return centers
 
 
-
+'''
 class MinMaxKMeans:
   def __init__(self,
                n_clusters,
@@ -136,13 +155,15 @@ class MinMaxKMeans:
 class LabelRand:
   def __init__(self,
                n_clusters,
-               n_init,
-               C,
-               max_iter_svc,
-               seed,
-               verbose,
-               log_file,
-               n_jobs):
+               n_init = 1,
+               C = 1,
+               max_iter_svc = 50,
+               seed = 1,
+               verbose = 1,
+               log_file = '',
+               center_file = '',
+               clus_ass_file = '',
+               n_jobs = 1):
     self.n_clusters_ = n_clusters
     self.n_init_ = n_init
     self.C_ = C
@@ -151,81 +172,123 @@ class LabelRand:
     self.verbose_ = verbose
     self.log_file_ = log_file
     self.n_jobs_ = n_jobs
+    self.center_file_ = center_file
+    self.clus_ass_file_ = clus_ass_file
     self.log_ = ''
+
+
+  def update_seed(self, seed):
+    self.seed_ = seed
+
+
+  def update_log_file(self, log_file):
+    self.log_file_ = log_file
 
 
   def cluster_labels(self, X, Y):
     Y = csr_matrix(Y)
 
+    np.random.seed(self.seed_)
     labels = np.array([i % self.n_clusters_ for i in range(Y.shape[1])])
     labels = np.random.permutation(labels)
     self.cluster_assignments_ = []
     for cid in range(self.n_clusters_):
       sel_labels = (labels == cid)
-      cl_ass = csr_matrix((np.sum(Y[:, sel_labels], axis=1) > 0.0).reshape(-1, 1))
+      cl_ass = csr_matrix((np.sum(Y[:, sel_labels], axis=1) > 0).reshape(-1, 1), dtype = np.int32)
       self.cluster_assignments_.append(cl_ass)
       print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels)))
       self.log_ += str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels))+'\n'
-    self.cluster_assignments_ = hstack(self.cluster_assignments_)
+    self.cluster_assignments_ = csr_matrix(hstack(self.cluster_assignments_))
 
 
   def fit(self, X, Y):
     assert(X.shape[0] == Y.shape[0])
-
-    self.cluster_labels(X, Y)
- 
     params = {'lamb': self.C_, 'itr': self.max_iter_svc_}
     self.clf_ = MulticlassPredictor(params)
 
-    self.centers_ = np.zeros((0, X.shape[1]+1), dtype=np.float)
+    if self.center_file_:
+      print(str(datetime.now())+' : Loading cluster centers from file: '+self.center_file_)
+      self.log_ += str(datetime.now())+' : Loading cluster centers from file: '+self.center_file_+'\n'
+      self.centers_ = pickle.load(open(self.center_file_, 'rb'))
+      assert(self.centers_.shape[0] == X.shape[1]+1)
+      assert(self.centers_.shape[1] == self.n_clusters_)
+      self.clf_.LoadModel(self.centers_)
+      print(str(datetime.now())+' : Computing label assignment for each example')
+      self.log_ += str(datetime.now())+' : Computing label assignment for each example\n'
+      predY = csr_matrix(self.clf_.Predict(X, numThreads = self.n_jobs_))
+      self.labels_ = np.array(predY.argmax(1)).reshape(-1)
+
+      if (self.log_file_):
+        pickle.dump(self.log_, open(self.log_file_, 'wb'))
+      return
+
+    self.cluster_labels(X, Y)
+
+    # remove unassigned samples from the train dataset
+    print(str(datetime.now())+' : Removing unassigned samples from the train dataset')
+    self.log_ += str(datetime.now())+' : Removing unassigned samples from the train dataset\n'
+    assigned_samples = (np.array(np.sum(self.cluster_assignments_, axis = 1)).reshape(-1) > 0)
+    print(str(datetime.now())+' : # of Unassigned samples '+str(assigned_samples.shape[0]-np.sum(assigned_samples)))
+ 
     print(str(datetime.now())+' : Learning predictor for each cluster')
     self.log_ += str(datetime.now())+' : Learning predictor for each cluster\n'
 
-    Xtr, Xte, Ytr, Yte = train_test_split(X, self.cluster_assignments_, test_size = 0.2, random_state = self.seed_)
+    Xtr, Xte, Ytr, Yte = train_test_split(X[assigned_samples, :], self.cluster_assignments_[assigned_samples, :], test_size = 0.2, random_state = self.seed_)
     self.clf_.Train(Xtr, Ytr, numThreads = self.n_jobs_)
 
-    labels, _ = self.clf_.Predict(Xtr, numThreads = self.n_jobs_)
-    labels = np.array(labels[:, 0].todense()).reshape(-1)
+    predYtr = csr_matrix(self.clf_.Predict(Xtr, numThreads = self.n_jobs_))
+    labels = np.array(predYtr.argmax(1)).reshape(-1)
     print(str(datetime.now())+' : Cluster selection accuracy in train set '+str(np.sum([Ytr[i, labels[i]] for i in range(Ytr.shape[0])])/float(Ytr.shape[0])))
     self.log_ += str(datetime.now())+' : Cluster selection accuracy in train set '+str(np.sum([Ytr[i, labels[i]] for i in range(Ytr.shape[0])])/float(Ytr.shape[0]))+'\n'
 
-    labels, _ = self.clf_.Predict(Xte, numThreads = self.n_jobs_)
-    labels = np.array(labels[:, 0].todense()).reshape(-1)
+    predYte = csr_matrix(self.clf_.Predict(Xte, numThreads = self.n_jobs_))
+    labels = np.array(predYte.argmax(1)).reshape(-1)
     print(str(datetime.now())+' : Cluster selection accuracy in valid set '+str(np.sum([Yte[i, labels[i]] for i in range(Yte.shape[0])])/float(Yte.shape[0])))
     self.log_ += str(datetime.now())+' : Cluster selection accuracy in valid set '+str(np.sum([Yte[i, labels[i]] for i in range(Yte.shape[0])])/float(Yte.shape[0]))+'\n'
 
-    del self.cluster_assignments_, Xtr, Xte, Ytr, Yte
     self.centers_ = self.clf_.W
+    del Xtr, Xte, Ytr, Yte, predYte, predYtr, labels
 
     print(str(datetime.now())+' : Computing label assignment for each example')
     self.log_ += str(datetime.now())+' : Computing label assignment for each example\n'
-    labels, _ = self.clf_.Predict(X, numThreads = self.n_jobs_)
-    self.labels_ = np.array(labels[:, 0].todense()).reshape(-1)
+    predY = csr_matrix(self.clf_.Predict(X, numThreads = self.n_jobs_))
+    self.labels_ = np.array(predY.argmax(1)).reshape(-1)
+    print(str(datetime.now())+' : Final cluster assignments:')
+    self.log_ += str(datetime.now())+' : Final cluster assignments:\n'
+    self.Y_ = []
+    for cid in range(self.n_clusters_):
+      cl_ass = np.array(self.labels_ == cid).reshape(-1)
+      sel_labels = (np.sum(Y[cl_ass, :], axis = 0) > 0)
+      self.Y_.append(sel_labels)
+      print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels)))
+      self.log_ += str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels))+'\n'
 
     if (self.log_file_):
       pickle.dump(self.log_, open(self.log_file_, 'wb'))
 
 
   def predict(self, X):
-    labels, _ = self.clf_.Predict(X, numThreads = self.n_jobs_)
-    return np.array(labels[:, 0].todense()).reshape(-1)
+    predY = csr_matrix(self.clf_.Predict(X, numThreads = self.n_jobs_))
+    return np.array(predY.argmax(1)).reshape(-1)
 
 
 
 class LabelNeighbourExpensionEP(LabelRand):
   def __init__(self,
                n_clusters,
-               n_init,
-               num_nn,
-               rep_factor,
-               label_normalize,
-               C,
-               max_iter_svc,
-               seed,
-               verbose,
-               log_file,
-               res_file,
-               n_jobs):
+               n_init = 1,
+               num_nn = 10,
+               rep_factor = 1.1,
+               label_normalize = 1,
+               C = 1,
+               max_iter_svc = 50,
+               seed = 1,
+               verbose = 1,
+               log_file = '',
+               res_file = '',
+               center_file = '',
+               clus_ass_file = '',
+               n_jobs = 1):
     self.n_clusters_ = n_clusters
     self.n_init_ = n_init
     self.num_nn_ = num_nn
@@ -236,12 +299,18 @@ class LabelNeighbourExpensionEP(LabelRand):
     self.verbose_ = verbose
     self.log_file_ = log_file
     self.res_file_ = res_file
+    self.center_file_ = center_file
+    self.clus_ass_file_ = clus_ass_file
     self.label_normalize_ = label_normalize
     self.n_jobs_ = n_jobs
     self.log_ = ''
 
 
   def cluster_labels(self, X, Y):
+    if (self.clus_ass_file_):
+      self.cluster_assignments_ = pickle.load(open(self.clus_ass_file_, 'rb'))
+      return
+
     Y = csr_matrix(Y)
     indices = Y.indices
     indptr = Y.indptr
@@ -262,7 +331,8 @@ class LabelNeighbourExpensionEP(LabelRand):
       print(str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels))))
       self.log_ += str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels)))+'\n'
     self.cluster_assignments_ = csr_matrix(self.cluster_assignments_)
-    pickle.dump(self.cluster_assignments_, open(self.res_file_+'_clus_ass_'+str(self.seed_)+'.pkl', 'wb'));
+    if (self.res_file_):
+      pickle.dump(self.cluster_assignments_, open(self.res_file_, 'wb'));
 
 
 

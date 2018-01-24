@@ -407,6 +407,7 @@ BOOST_PYTHON_MODULE(data_partitioner)
  
   using namespace p; 
   class_<DataPartitionerWrapper>("DataPartitioner")
+          .enable_pickling()
           .def(init<DataPartitioner>())
           //.def(init<np::ndarray const &>())
           .def("RunPairwise", &DataPartitionerWrapper::RunPairwise)

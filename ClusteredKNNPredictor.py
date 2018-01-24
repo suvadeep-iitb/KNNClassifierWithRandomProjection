@@ -18,6 +18,14 @@ class ClusteredKNNPredictor(KNNPredictor):
     self.maxTestSamples = 0
     self.sampleIndices = []
     self.predictorList = []
+    self.clusteringAlgo.update_seed(params['seed'])
+    '''
+    if (self.logFile):
+      newLogFile = params['logFile']+'_clustering_log.pkl'
+    else:
+      newLogFile = ''
+    self.clusteringAlgo.update_log_file(newLogFile)
+    '''
     for i in range(self.numClusters):
       newBasePredictor = copy.deepcopy(params['basePredictor'])
       if self.logFile:
@@ -42,9 +50,11 @@ class ClusteredKNNPredictor(KNNPredictor):
     print(str(datetime.now()) + " : " + "Peforming clustering")
     self.clusteringAlgo.fit(X, Y)
     self.clusterAssignments = self.clusteringAlgo.labels_
-    nClusters = np.max(self.clusterAssignments) + 1
+    nClusters = int(np.max(self.clusterAssignments) + 1)
     assert(nClusters <= self.numClusters)
     print(str(datetime.now()) + " : " + "Clustering done. # of clusters = "+str(nClusters))
+    for cId in range(nClusters):
+      print('Cluster '+str(cId)+' : # of samples '+str(np.sum(self.clusterAssignments == cId)))
     self.predictorList = self.predictorList[:nClusters]
     self.fIdMappingList = []
     self.lIdMappingList = []
@@ -90,6 +100,29 @@ class ClusteredKNNPredictor(KNNPredictor):
       Xt, Yt, testSample = DownSampleData(Xt, Yt, maxTestSamples)
 
     clusterAssignments = self.clusteringAlgo.predict(Xt)
+
+    ####
+    '''
+    selRow = np.ones((Xt.shape[0]), dtype=bool)
+    labelCount = 0
+    print(str(np.sum(Yt.sum(1)==0)))
+    for i in range(Xt.shape[0]):
+      if (Yt[i, :].sum() > 0):
+        w = (Yt[i, :] * self.clusteringAlgo.Y_[clusterAssignments[i]].astype(float).T)/float(Yt[i, :].sum())
+      else:
+        w = 0
+      if w < 0.1:
+        selRow[i] = False
+        labelCount += Yt[i, :].sum()
+    clusterAssignments = clusterAssignments[selRow]
+    Xt = Xt[selRow, :]
+    Yt = Yt[selRow, :]
+    print(str(selRow.shape[0]-np.sum(selRow))+'/'+str(selRow.shape[0])+' test samples removed')
+    print('Average label count of the removed samples: '+str(labelCount/(selRow.shape[0]-np.sum(selRow))))
+    print(str(zeroCount))
+    '''
+    ####
+
     resList = []
     for i, predictor in enumerate(self.predictorList):
       Xtsam = Xt[np.equal(clusterAssignments, i), :]

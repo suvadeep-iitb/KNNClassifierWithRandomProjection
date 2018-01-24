@@ -8,9 +8,6 @@ import math
 #from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.svm import LinearSVR, LinearSVC
-from MyThread import myThread
-import threading
-from MyQueue import myQueue
 from datetime import datetime
 from KNNPredictor import *
 from sklearn.metrics import mean_squared_error
@@ -19,7 +16,6 @@ from sklearn.metrics import mean_squared_error
 
 
 class MulticlassPredictor:
-
   def __init__(self, params):
     self.lamb = params['lamb']
     self.itr = params['itr']
@@ -51,9 +47,15 @@ class MulticlassPredictor:
 
     # Predict labels for input data
     print(str(datetime.now()) + " : " + "Performing prediction")
-    predYt, scoreYt = self.ComputeLabelScore(Xt, numThreads)
+    predYt = self.ComputeLabelScore(Xt, numThreads)
 
-    return predYt, scoreYt
+    return predYt
+
+
+  def LoadModel(self, W):
+    self.W = W
+    self.featureDim = W.shape[0]-1
+    self.labelDim = W.shape[1]
 
 
   def ComputeLabelScore(self, Xt, numThreads = 1):
@@ -66,18 +68,17 @@ class MulticlassPredictor:
   
     numCores = numThreads
     resultList = Parallel(n_jobs = numCores)(delayed(self.ComputeLabelScoreInner)(Xt[s: e, :]) for s,e in zip(startIdx, endIdx))
-    predYt = vstack([tup[0] for tup in resultList], format='lil')
-    scoreYt = vstack([tup[1] for tup in resultList], format='lil')
+    if issparse(resultList[0]):
+      predYt = vstack(resultList, format='lil')
+    else:
+      predYt = np.vstack(resultList)
 
     assert(predYt.shape[0] == nt)
-    assert(scoreYt.shape[0] == nt)
-    return predYt, scoreYt
+    return predYt
 
 
   def ComputeLabelScoreInner(self, Xt):
-    scoreYt = self.EmbedFeature(Xt)
-    predYt, scoreYt = SortCooMatrix(coo_matrix(scoreYt));
-    return predYt, scoreYt
+    return self.EmbedFeature(Xt)
 
 
   def PredictAndComputePrecision(self, Xt, Yt, maxTestSamples, numThreads):
@@ -91,7 +92,7 @@ class MulticlassPredictor:
 
     # Predict labels for input data
     print(str(datetime.now()) + " : " + "Performing prediction")
-    predYt, scoreYt = self.Predict(Xt, numThreads)
+    predYt = self.Predict(Xt, numThreads)
 
     # Compute precisions for impute data
     print(str(datetime.now()) + " : " + "Computing precisions")
