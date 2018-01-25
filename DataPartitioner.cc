@@ -21,6 +21,7 @@
 #include <cstdio>
 #include <vector>
 #include <set>
+#include <list>
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
@@ -263,7 +264,7 @@ void get_positives(
 }
 
 void get_edge_set(
-    std::vector<std::set<size_t> > &nn_graph, 
+    std::vector<std::list<size_t> > &nn_graph, 
     std::set<size_t> &cluster_assignment, 
     std::set<size_t> &left_vertices, 
     float delta_min,
@@ -309,31 +310,38 @@ void get_edge_set(
       else
         S_minus_C.erase(x);
       left_vertices.erase(x);
-      std::set<size_t> yset = nn_graph[x];
-      for (auto&& y: yset) {
+      for (auto ity = nn_graph[x].begin(); ity != nn_graph[x].end(); ++ity) {
+        size_t y = *ity;
         if (S.find(y) != S.end()) continue;
 
         S.insert(y);
         S_minus_C.insert(y);
-        std::set<size_t> zset = nn_graph[y];
-        for (auto z: zset) {
+
+        clus_ass.insert(x);
+        clus_ass.insert(y);
+
+        edge_count++;
+        ity = nn_graph[x].erase(ity);
+        --ity;
+#if SYM
+        nn_graph[y].remove(x);
+#endif
+        for (auto itz = nn_graph[y].begin(); itz != nn_graph[y].end(); ++itz) {
+          size_t z = *itz;
           if (S.find(z) == S.end()) continue;
 
           edge_count++;
-          clus_ass.insert(y);
           clus_ass.insert(z);
 
-          auto res = std::find(nn_graph[y].begin(), nn_graph[y].end(), z);
-          if (res != nn_graph[y].end()) nn_graph[y].erase(res);
-
+          itz = nn_graph[y].erase(itz);
+          --itz;
 #if SYM
-          res = std::find(nn_graph[z].begin(), nn_graph[z].end(), y);
-          if (res != nn_graph[z].end()) nn_graph[z].erase(res);
+          nn_graph[z].remove(y);
 #endif
         }
       }
     }
-
+ 
     // copy each element of clus_ass into cluster_assignment
     for (auto&& nn: clus_ass) cluster_assignment.insert(nn);
 }
@@ -693,7 +701,7 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
 
 #if SYM
   // create a symmetric nn graph
-  std::vector<std::set<size_t> > nn_graph(labels_vec.size());
+  std::vector<std::list<size_t> > nn_graph(labels_vec.size());
   for (auto i = 0; i < pos_vec.size(); ++i) {
     std::unordered_set<size_t> vset;
     for (auto&& p: pos_vec[i]) {
@@ -702,20 +710,25 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
         continue;
       vset.insert(cur);
       if (std::find(nn_graph[i].begin(), nn_graph[i].end(), cur) == nn_graph[i].end())
-        nn_graph[i].insert(cur);
+        nn_graph[i].push_back(cur);
       if (std::find(nn_graph[cur].begin(), nn_graph[cur].end(), i) == nn_graph[cur].end())
-        nn_graph[cur].insert(i);
+        nn_graph[cur].push_back(i);
     }
   }
 #else
   // create asymmetric nn graph
-  std::vector<std::set<size_t> > nn_graph(labels_vec.size());
+  std::vector<std::push_back<size_t> > nn_graph(labels_vec.size());
   for (auto i = 0; i < pos_vec.size(); ++i) {
-    for (auto&& p: pos_vec[i])
-      nn_graph[i].insert(p.first);
+    std::unordered_set<size_t> vset;
+    for (auto&& p: pos_vec[i]) {
+      size_t cur = p.first;
+      if (std::find(vset.begin(), vset.end(), cur) != vset.end())
+        continue;
+      vset.insert(cur);
+      nn_graph[i].push_back(cur);
+    }
   }
-#endif //#if
-
+#endif 
 
   pos_vec.clear();
 
