@@ -264,7 +264,7 @@ void get_positives(
 }
 
 void get_edge_set(
-    std::vector<std::list<size_t> > &nn_graph, 
+    std::vector<std::list<std::pair<size_t, float> > > &nn_graph, 
     std::set<size_t> &cluster_assignment, 
     std::set<size_t> &left_vertices, 
     float delta_min,
@@ -292,9 +292,9 @@ void get_edge_set(
         for (auto&& it: S_minus_C) {
           size_t cur_node = it;
           float val = 0;
-          for (auto&& nn: nn_graph[cur_node]) {
-            if (S.find(nn) == S.end()) 
-              val += 1;
+          for (auto nn = nn_graph[cur_node].begin(); nn != nn_graph[cur_node].end(); ++nn) {
+            if (S.find(nn->first) == S.end())
+              val += nn->second;
           }
 
           if (val < min_val) {
@@ -311,7 +311,7 @@ void get_edge_set(
         S_minus_C.erase(x);
       left_vertices.erase(x);
       for (auto ity = nn_graph[x].begin(); ity != nn_graph[x].end(); ++ity) {
-        size_t y = *ity;
+        size_t y = ity->first;
         if (S.find(y) != S.end()) continue;
 
         S.insert(y);
@@ -324,10 +324,14 @@ void get_edge_set(
         ity = nn_graph[x].erase(ity);
         --ity;
 #if SYM
-        nn_graph[y].remove(x);
+        for (auto it = nn_graph[y].begin(); it != nn_graph[y].end(); ++it) {
+          if (it->first == x) {
+            nn_graph[y].erase(it); break;
+          }
+        }
 #endif
         for (auto itz = nn_graph[y].begin(); itz != nn_graph[y].end(); ++itz) {
-          size_t z = *itz;
+          size_t z = itz->first;
           if (S.find(z) == S.end()) continue;
 
           edge_count++;
@@ -336,7 +340,11 @@ void get_edge_set(
           itz = nn_graph[y].erase(itz);
           --itz;
 #if SYM
-          nn_graph[z].remove(y);
+          for (auto it = nn_graph[z].begin(); it != nn_graph[z].end(); ++it) {
+            if (it->first == y) {
+              nn_graph[z].erase(it); break;
+            }
+          }
 #endif
         }
       }
@@ -447,19 +455,7 @@ void sampling_negatives_uniform(
 }
 
 
-void insert_pair(std::vector<std::pair<size_t, float> > &vec,
-            std::pair<size_t, float> p)
-{
-  std::vector<std::pair<size_t, float> >::iterator it;
-  for (it = vec.begin(); it < vec.end(); ++it) {
-    if (it->first == p.first) {
-      it->second += p.second;
-      break;
-    }
-  }
-  if (it == vec.end())
-    vec.push_back(std::make_pair(p.first, p.second));
-}
+
 
 
 bool comp(std::pair<size_t, float> p1, std::pair<size_t, float> p2)
@@ -700,8 +696,21 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
   get_positives(labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &pos_vec);
 
 #if SYM
-  // create a symmetric nn graph
-  std::vector<std::list<size_t> > nn_graph(labels_vec.size());
+  auto insert_pair = [](std::list<std::pair<size_t, float> > &vec, std::pair<size_t, float> p)
+  {
+    std::list<std::pair<size_t, float> >::iterator it;
+    for (it = vec.begin(); it != vec.end(); ++it) {
+      if (it->first == p.first) {
+        it->second += p.second;
+        break;
+      }
+    }
+    if (it == vec.end())
+      vec.push_back(std::make_pair(p.first, p.second));
+  };
+
+ // create a symmetric nn graph
+  std::vector<std::list<std::pair<size_t, float> > > nn_graph(labels_vec.size());
   for (auto i = 0; i < pos_vec.size(); ++i) {
     std::unordered_set<size_t> vset;
     for (auto&& p: pos_vec[i]) {
@@ -709,15 +718,14 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
       if (std::find(vset.begin(), vset.end(), cur) != vset.end())
         continue;
       vset.insert(cur);
-      if (std::find(nn_graph[i].begin(), nn_graph[i].end(), cur) == nn_graph[i].end())
-        nn_graph[i].push_back(cur);
-      if (std::find(nn_graph[cur].begin(), nn_graph[cur].end(), i) == nn_graph[cur].end())
-        nn_graph[cur].push_back(i);
+
+      insert_pair(nn_graph[i], std::make_pair(cur, p.second/2.0));
+      insert_pair(nn_graph[cur], std::make_pair(i, p.second/2.0));
     }
   }
 #else
   // create asymmetric nn graph
-  std::vector<std::push_back<size_t> > nn_graph(labels_vec.size());
+  std::vector<std::list<std::pair<size_t, float> > > nn_graph(labels_vec.size());
   for (auto i = 0; i < pos_vec.size(); ++i) {
     std::unordered_set<size_t> vset;
     for (auto&& p: pos_vec[i]) {
@@ -725,7 +733,7 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
       if (std::find(vset.begin(), vset.end(), cur) != vset.end())
         continue;
       vset.insert(cur);
-      nn_graph[i].push_back(cur);
+      nn_graph[i].push_back(p);
     }
   }
 #endif 
