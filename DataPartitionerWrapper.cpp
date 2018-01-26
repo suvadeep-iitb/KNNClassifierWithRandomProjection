@@ -284,10 +284,10 @@ class DataPartitionerWrapper
       csr_sparse2vec(label_indices, label_indptr, label_vec);
 
       dataPartitioner_.Clear();
-      float rep_factor = dataPartitioner_.RunNeighbourExpansionEP(label_vec, cluster_assign,
-                                             K, num_nn, label_normalize,
-                                             replication_factor, seed,
-                                             verbose);
+      float rep_factor = dataPartitioner_.RunNeighbourExpansion(label_vec, cluster_assign,
+                                                        K, num_nn, label_normalize,
+                                                        replication_factor, false, seed,
+                                                        verbose);
       label_vec.clear();
 
       assert(partitions.get_nd() == 2);
@@ -324,6 +324,46 @@ class DataPartitionerWrapper
             partitions_ptr_float[r*ncol+k] = (float)1.0;
           else
             partitions_ptr_double[r*ncol+k] = (double)1.0;
+        }
+      }
+
+      return rep_factor;
+    }
+
+    float RunNeighbourExpansionVP(np::ndarray const & label_indices,
+                               np::ndarray const & label_indptr,
+                               np::ndarray & partitions,
+                               size_t K, size_t num_nn, int label_normalize,
+                               float replication_factor, int seed, int verbose)
+    {
+      vector<vector<int> > label_vec;
+      vector<set<size_t> > cluster_assign;
+      csr_sparse2vec(label_indices, label_indptr, label_vec);
+
+      dataPartitioner_.Clear();
+      float rep_factor = dataPartitioner_.RunNeighbourExpansion(label_vec, cluster_assign,
+                                             K, num_nn, label_normalize,
+                                             replication_factor, true, seed,
+                                             verbose);
+      label_vec.clear();
+
+      assert(partitions.get_nd() == 1);
+      assert(partitions.shape(0) == label_indptr.shape(0)-1);
+      assert(partitions.get_dtype() == np::dtype::get_builtin<int32_t>());
+    
+      int32_t* partitions_ptr = NULL; 
+      partitions_ptr = reinterpret_cast<int32_t*>(partitions.get_data());
+
+      size_t nrow = partitions.shape(0);
+      for (auto r = 0; r < nrow; r++)
+        partitions_ptr[r] = -1;
+
+      assert(cluster_assign.size() == K);
+      for (auto k = 0; k < cluster_assign.size(); k++) {
+        for (auto&& e: cluster_assign[k]) {
+          assert(e < nrow);
+          assert(partitions_ptr[e] == -1);
+          partitions_ptr[e] = (int32_t)k;
         }
       }
 
@@ -413,6 +453,7 @@ BOOST_PYTHON_MODULE(data_partitioner)
           .def("RunPairwise", &DataPartitionerWrapper::RunPairwise)
           .def("GetNearestClusters", &DataPartitionerWrapper::GetNearestClusters)
           .def("RunNeighbourExpansionEP", &DataPartitionerWrapper::RunNeighbourExpansionEP)
+          .def("RunNeighbourExpansionVP", &DataPartitionerWrapper::RunNeighbourExpansionVP)
           .def("GetK", &DataPartitionerWrapper::GetK)
           .def("GetCenters", &DataPartitionerWrapper::GetCenters)
           .def("Clear", &DataPartitionerWrapper::Clear)

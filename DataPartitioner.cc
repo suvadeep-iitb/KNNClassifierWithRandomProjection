@@ -263,6 +263,75 @@ void get_positives(
   if (verbose > 0) { fprintf(stderr, "\rget_positives done!\n"); }
 }
 
+void get_vertex_set(
+    std::vector<std::list<std::pair<size_t, float> > > &nn_graph, 
+    std::set<size_t> &cluster_assignment, 
+    std::set<size_t> &left_vertices, 
+    float delta_min,
+    float delta_max,
+    std::mt19937 &rnd_gen)
+{
+    std::set<size_t> S_minus_C;
+    std::unordered_set<size_t> C;
+    size_t vertex_count = 0;
+
+    size_t count = 0;
+    while (vertex_count <= delta_max) {
+      std::set<size_t> diff;
+      size_t x;
+      if (S_minus_C.size() == 0) {
+        if ((left_vertices.size() == 0) || (vertex_count >= delta_min))
+          break;
+        size_t r = rnd_gen() % left_vertices.size();
+        std::set<size_t>::const_iterator it(left_vertices.begin());
+        std::advance(it, r);
+        x = *it;
+      }
+      else {
+        float min_val = nn_graph.size();
+        for (auto&& it: S_minus_C) {
+          float val = nn_graph[it].size();
+          if (val < min_val) {
+            min_val = val;
+            x = it;
+          }
+        }
+        S_minus_C.erase(x);
+      }
+
+      vertex_count++;
+      C.insert(x);
+      left_vertices.erase(x);
+      for (auto ity = nn_graph[x].begin(); ity != nn_graph[x].end(); ++ity) {
+        size_t y = ity->first;
+        if (C.find(y) == C.end()) {
+          S_minus_C.insert(y);
+          // erase x from neighbour set of y
+          for (auto it = nn_graph[y].begin(); it != nn_graph[y].end(); ++it) {
+            if (it->first == x) {
+              nn_graph[y].erase(it);
+              break;
+            }
+          }
+        }
+      }
+      // remove all the neighbours of x
+      nn_graph[x].clear();
+    }
+ 
+    // copy each element of clus_ass into cluster_assignment
+    for (auto&& nn: C) cluster_assignment.insert(nn);
+
+    // remove all neighbours of vertices in S_minus_C in C
+    for (auto&& nn: S_minus_C) 
+      for (auto it = nn_graph[nn].begin(); it != nn_graph[nn].end(); ) {
+        if (C.find(it->first) != C.end()) 
+          it = nn_graph[nn].erase(it);
+        else 
+          ++it;
+      }
+}
+
 void get_edge_set(
     std::vector<std::list<std::pair<size_t, float> > > &nn_graph, 
     std::set<size_t> &cluster_assignment, 
@@ -290,16 +359,10 @@ void get_edge_set(
       else {
         float min_val = nn_graph.size();
         for (auto&& it: S_minus_C) {
-          size_t cur_node = it;
-          float val = 0;
-          for (auto nn = nn_graph[cur_node].begin(); nn != nn_graph[cur_node].end(); ++nn) {
-            if (S.find(nn->first) == S.end())
-              val += nn->second;
-          }
-
+          float val = nn_graph[it].size();
           if (val < min_val) {
             min_val = val;
-            x = cur_node;
+            x = it;
           }
         }
       }
@@ -352,91 +415,6 @@ void get_edge_set(
  
     // copy each element of clus_ass into cluster_assignment
     for (auto&& nn: clus_ass) cluster_assignment.insert(nn);
-}
-
-void get_edge_set(
-    std::vector<std::vector<std::pair<size_t, float> > > &nn_graph, 
-    std::set<size_t> &cluster_assignment, 
-    std::set<size_t> &left_vertices, 
-    float delta_min,
-    float delta_max,
-    std::mt19937 &rnd_gen)
-{
-    std::set<size_t> C;
-    std::set<size_t> S;
-    size_t edge_count = 0;
-
-    while (edge_count <= delta_max) {
-      std::set<size_t> diff;
-      std::set_difference(S.begin(), S.end(), C.begin(), C.end(),
-                          std::inserter(diff, diff.begin()));
-      size_t x;
-      if (diff.size() == 0) {
-        if ((left_vertices.size() == 0) || (edge_count >= delta_min))
-          return;
-        size_t r = rnd_gen() % left_vertices.size();
-        std::set<size_t>::const_iterator it(left_vertices.begin());
-        std::advance(it, r);
-        x = *it;
-      }
-      else {
-        float min_val = nn_graph.size();
-        for (auto&& it: diff) {
-          size_t cur_node = it;
-          float val = 0;
-          auto s = S.begin();
-          auto p = nn_graph[cur_node].begin();
-          while(p != nn_graph[cur_node].end()) {
-            if (s == S.end()) break;
-            if (p->first < *s) {
-              val += p->second;
-              p++;
-            }
-            else if (*s < p->first) { s++; }
-            else {s++; p++;}
-          }
-
-          if (val < min_val) {
-            min_val = val;
-            x = cur_node;
-          }
-        }
-      }
-
-      // AllocEdges
-      C.insert(x);
-      S.insert(x);
-      left_vertices.erase(x);
-      std::set<size_t> yset;
-      for (auto&& ity: nn_graph[x]) {
-        size_t y = ity.first;
-        if(std::find(S.begin(), S.end(), y) == S.end()) {
-          S.insert(y);
-          yset.insert(y);
-        }
-      }
-
-      for (auto&& y: yset) {
-        std::set<size_t> zset;
-        for (auto&& itz: nn_graph[y]) zset.insert(itz.first);
-        for (auto z: zset) {
-          if (std::find(S.begin(), S.end(), z) == S.end())
-            continue;
-          
-          edge_count++;
-          cluster_assignment.insert(y);
-          cluster_assignment.insert(z);
-          auto res = std::find_if(nn_graph[y].begin(), nn_graph[y].end(),
-                               FindNode(z));
-          nn_graph[y].erase(res);
-          res = std::find_if(nn_graph[z].begin(), nn_graph[z].end(),
-                               FindNode(y));
-          nn_graph[z].erase(res);
-          if (edge_count > delta_max)
-            return;
-        }
-      }
-    }
 }
 
 void sampling_negatives_uniform(
@@ -671,10 +649,11 @@ float DataPartitioner::RunPairwise(const std::vector<std::vector<std::pair<int, 
 }
 
 
-float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<int> > &labels_vec,
+float  DataPartitioner::RunNeighbourExpansion(const std::vector<std::vector<int> > &labels_vec,
                                              std::vector<std::set<size_t> > &cluster_assign,
                                              size_t K, size_t num_nn, int label_normalize,
-                                             float replication_factor, int seed, int verbose) 
+                                             float replication_factor, bool vertex_partition, 
+                                             int seed, int verbose) 
 {
   if (verbose > 0) {
     fprintf(stderr, "#data: %lu, K: %lu, seed: %d\n", labels_vec.size(), K, seed);
@@ -760,15 +739,26 @@ float  DataPartitioner::RunNeighbourExpansionEP(const std::vector<std::vector<in
   for (size_t i = 0; i < labels_vec.size(); ++i)
     left_vertices.insert(i);
 
+  float delta_max = 0;
+  float delta_min = 0;
+  if (vertex_partition) {
+    delta_max = (replication_factor * (nn_graph.size()-iso_vertex_num)) / K;
+    delta_min = (float)(nn_graph.size()-iso_vertex_num) / K;
+  }
+  else {
 #if SYM
-  float delta_max = (replication_factor * pair_num) / (K * 2);
-  float delta_min = (float)pair_num / (K * 2);
+    delta_max = (replication_factor * pair_num) / (K * 2);
+    delta_min = (float)pair_num / (K * 2);
 #else
-  float delta_max = (replication_factor * pair_num) / K;
-  float delta_min = (float)pair_num / K;
+    delta_max = (replication_factor * pair_num) / K;
+    delta_min = (float)pair_num / K;
 #endif
+  }
   for (auto k = 0; k < K; k++) {
-    get_edge_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max, rnd_gen);
+    if (vertex_partition)
+      get_vertex_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max, rnd_gen);
+    else
+      get_edge_set(nn_graph, cluster_assign[k], left_vertices, delta_min, delta_max, rnd_gen);
     if (verbose > 0) {
       fprintf(stderr, "cluster %d: sample size %lu\n", k, cluster_assign[k].size());
     }
