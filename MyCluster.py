@@ -199,6 +199,9 @@ class LabelRand:
       print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels)))
       self.log_ += str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels))+'\n'
     self.cluster_assignments_ = csr_matrix(hstack(self.cluster_assignments_))
+    clus_sizes = np.array(self.cluster_assignments_.sum(0)).reshape(-1)
+    self.cluster_assignments_ = self.cluster_assignments_[:, clus_sizes>0]
+    self.n_clusters_ = self.cluster_assignments_.shape[1]
 
 
   def fit(self, X, Y):
@@ -233,7 +236,7 @@ class LabelRand:
     print(str(datetime.now())+' : Learning predictor for each cluster')
     self.log_ += str(datetime.now())+' : Learning predictor for each cluster\n'
 
-    Xtr, Xte, Ytr, Yte = train_test_split(X[assigned_samples, :], self.cluster_assignments_[assigned_samples, :], test_size = 0.2, random_state = self.seed_)
+    Xtr, Xte, Ytr, Yte = train_test_split(X[assigned_samples, :], self.cluster_assignments_[assigned_samples, :], test_size = 0.1, random_state = self.seed_)
     self.clf_.Train(Xtr, Ytr, numThreads = self.n_jobs_)
 
     predYtr = csr_matrix(self.clf_.Predict(Xtr, numThreads = self.n_jobs_))
@@ -311,18 +314,25 @@ class LabelNeighbourExpensionEP(LabelRand):
       self.cluster_assignments_ = pickle.load(open(self.clus_ass_file_, 'rb'))
       return
 
+    X = csr_matrix(X)
+    X_indices = X.indices
+    X_data = X.data
+    X_indptr = X.indptr
+
     Y = csr_matrix(Y)
-    indices = Y.indices
-    indptr = Y.indptr
+    Y_indices = Y.indices
+    Y_indptr = Y.indptr
+
     print(str(datetime.now())+' : Starting RunNeighbourExpansionEP partitioning on label matrix')
     self.log_ += str(datetime.now())+' : Starting RunNeighbourExpansionEP partitioning on label matrix\n'
     self.cluster_assignments_ = np.zeros((self.n_clusters_, Y.shape[0]), dtype=np.float)
     dp =DP()
-    obj_value = dp.RunNeighbourExpansionEP(indices, indptr, 
-                             self.cluster_assignments_,
-                             self.n_clusters_, self.num_nn_,
-                             self.label_normalize_, self.rep_factor_,
-                             self.seed_, self.verbose_)
+    obj_value = dp.RunNeighbourExpansionEP(X_indices, X_data, X_indptr,
+                                           Y_indices, Y_indptr, 
+                                           self.cluster_assignments_,
+                                           self.n_clusters_, self.num_nn_,
+                                           self.label_normalize_, self.rep_factor_,
+                                           self.seed_, self.verbose_)
 
     self.cluster_assignments_ = self.cluster_assignments_.T
     for cid in range(self.n_clusters_):
@@ -331,9 +341,54 @@ class LabelNeighbourExpensionEP(LabelRand):
       print(str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels))))
       self.log_ += str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels)))+'\n'
     self.cluster_assignments_ = csr_matrix(self.cluster_assignments_)
+    clus_sizes = np.array(self.cluster_assignments_.sum(0)).reshape(-1)
+    self.cluster_assignments_ = self.cluster_assignments_[:, clus_sizes>0]
+    self.n_clusters_ = self.cluster_assignments_.shape[1]
+
     if (self.res_file_):
       pickle.dump(self.cluster_assignments_, open(self.res_file_, 'wb'));
 
+
+class LabelNeighbourExpensionVP(LabelNeighbourExpensionEP):
+
+  def cluster_labels(self, X, Y):
+    if (self.clus_ass_file_):
+      self.cluster_assignments_ = pickle.load(open(self.clus_ass_file_, 'rb'))
+      return
+
+    X = csr_matrix(X)
+    X_indices = X.indices
+    X_data = X.data
+    X_indptr = X.indptr
+
+    Y = csr_matrix(Y)
+    Y_indices = Y.indices
+    Y_indptr = Y.indptr
+    print(str(datetime.now())+' : Starting RunNeighbourExpansionVP partitioning on label matrix')
+    self.log_ += str(datetime.now())+' : Starting RunNeighbourExpansionVP partitioning on label matrix\n'
+    clus_assign = np.zeros((Y.shape[0]), dtype=np.int32)
+    dp =DP()
+    obj_value = dp.RunNeighbourExpansionVP(X_indices, X_data, X_indptr,
+                                           Y_indices, Y_indptr, clus_assign,
+                                           self.n_clusters_, self.num_nn_,
+                                           self.label_normalize_, self.rep_factor_,
+                                           self.seed_, self.verbose_)
+
+    self.cluster_assignments_ = [];
+    for cid in range(self.n_clusters_):
+      cl_ass = (clus_assign == cid);
+      sel_labels = (np.sum(Y[cl_ass > 0, :], axis=0) > 0)
+      self.cluster_assignments_.append(csr_matrix(cl_ass.reshape((-1, 1))))
+      print(str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels))))
+      self.log_ += str(datetime.now())+' : Cluster '+str(cid)+', # of examples '+str(int(np.sum(cl_ass)))+', # of labels '+str(int(np.sum(sel_labels)))+'\n'
+
+    self.cluster_assignments_ = csr_matrix(hstack(self.cluster_assignments_))
+    clus_sizes = np.array(self.cluster_assignments_.sum(0)).reshape(-1)
+    self.cluster_assignments_ = self.cluster_assignments_[:, clus_sizes>0]
+    self.n_clusters_ = self.cluster_assignments_.shape[1]
+
+    if (self.res_file_):
+      pickle.dump(self.cluster_assignments_, open(self.res_file_, 'wb'));
 
 
 def CompressDimension(X):

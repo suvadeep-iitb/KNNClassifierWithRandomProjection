@@ -163,6 +163,9 @@ class MulticlassPredictor:
 
 def TrainWrapper(Z, X, l, C):
   print("Starting training for "+str(l)+"th label...")
+  if issparse(X):
+    Z = Z.todense();
+  Z = np.array(Z).reshape(-1)
   '''
   model = LinearSVR(epsilon=0.0,
                     tol=0.000001, 
@@ -175,8 +178,8 @@ def TrainWrapper(Z, X, l, C):
   model = LinearSVC(dual=False,
                     C=C,
                     fit_intercept=True)
-  model.fit(X, Z.toarray().reshape(-1))
-  trainError = mean_squared_error(Z.toarray().reshape(-1), model.predict(X))
+  model.fit(X, Z)
+  trainError = mean_squared_error(Z, model.predict(X))
   print("Completed training for label: "+str(l)+" . Training error: "+str(trainError))
 
   return (model.coef_, model.intercept_, trainError)
