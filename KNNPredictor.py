@@ -54,6 +54,8 @@ class KNNPredictor:
     Y = self.Y
     nt = KNN.shape[0]
     L = Y.shape[1]
+    if (nt == 0):
+      return lil_matrix(np.zeros((nt, Y.shape[1])))
     batchSize = int(math.ceil(float(nt)/numThreads))
     numBatches = int(math.ceil(float(nt)/batchSize))
     startIdx = [i*batchSize for i in range(numBatches)]
@@ -72,6 +74,9 @@ class KNNPredictor:
     assert(predYt.shape == Yt.shape)
 
     nt, L = Yt.shape
+    if (nt == 0):
+      return np.zeros((K, 1))
+
     batchSize = int(math.ceil(float(nt)/numThreads))
     numBatches = int(math.ceil(float(nt)/batchSize))
     startIdx = [i*batchSize for i in range(numBatches)]
@@ -94,10 +99,11 @@ class KNNPredictor:
       # Create the KNN matrix
       KNN = np.zeros((Xt.shape[0], nnTest), dtype=np.int64);
       for i,nei in enumerate(neighbors):
-        if (len(nei[0]) < nnTest):
-          print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
-        KNN[i, :] = nei[0]
-
+        l = nei[0].shape[0]
+        KNN[i, :l] = nei[0]
+        if (l < nnTest):
+          for nn in range(l, nnTest):
+            KNN[i, nn] = nei[0][nn % l]
     return KNN
   
 

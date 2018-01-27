@@ -83,11 +83,17 @@ class NearestNeighbour:
     self.dataPartitioner_.GetNearestClusters(X_indices, X_data, X_indptr, self.labels_)
     print(str(datetime.now())+' : Final cluster assignments:')
     self.Y_ = []
+    self.label_mapping_ = np.array(range(self.n_clusters_))
     for cid in range(self.n_clusters_):
       cl_ass = np.array(self.labels_ == cid).reshape(-1)
+      if (np.sum(cl_ass) == 0):
+        for lid in range(cid+1, self.n_clusters_):
+          self.label_mapping_[lid] -= 1
       sel_labels = (np.sum(Y[cl_ass, :], axis = 0) > 0)
       self.Y_.append(sel_labels)
       print(str(datetime.now())+' : Cluster '+str(cid)+' # of examples '+str(int(np.sum(cl_ass)))+' # of labels '+str(np.sum(sel_labels)))
+    for i in range(self.labels_.shape[0]):
+      self.labels_[i] = self.label_mapping_[self.labels_[i]]
 
 
 
@@ -100,14 +106,14 @@ class NearestNeighbour:
 
     labels = np.zeros((X.shape[0]), dtype=np.int32)
     self.dataPartitioner_.GetNearestClusters(X_indices, X_data, X_indptr, labels)
+    for i in range(labels.shape[0]):
+      labels[i] = self.label_mapping_[labels[i]]
 
     return labels
 
 
   def get_clusters(self):
-    centers = np.zeros((self.n_clusters_, self.n_features_), dtype=np.float)
-    self.dataPartitioner_.GetCenters(centers)
-    return centers
+    raise NotImplemented
 
 
 '''

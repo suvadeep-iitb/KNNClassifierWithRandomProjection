@@ -59,9 +59,11 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     # Create the KNN matrix
     AKNN = np.zeros((pXt.shape[0], nnTest), dtype=np.int64);
     for i,nei in enumerate(neighbors):
-      if (len(nei[0]) < nnTest):
-        print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
-      AKNN[i, :] = nei[0]
+      l = nei[0].shape[0]
+      AKNN[i, :l] = nei[0]
+      if (l < nnTest):
+        for nn in range(l, nnTest):
+          AKNN[i, nn] = nei[0][nn % l]
     return AKNN
 
 
@@ -136,6 +138,9 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
 def TrainWrapper(Z, X, l, C):
+  if issparse(Z):
+    Z = Z.todense()
+  Z = np.array(Z).reshape(-1)
   print("Starting training for "+str(l)+"th label...")
   model = LinearSVR(epsilon=0.0,
                     tol=0.000001, 
@@ -144,8 +149,8 @@ def TrainWrapper(Z, X, l, C):
                     loss='squared_epsilon_insensitive', 
                     dual=False, 
                     fit_intercept=True)
-  model.fit(X, Z.reshape(-1))
-  trainError = mean_squared_error(Z.reshape(-1), model.predict(X))
+  model.fit(X, Z)
+  trainError = mean_squared_error(Z, model.predict(X))
   print("Completed training for label: "+str(l)+" . Training error: "+str(trainError))
 
   return (model.coef_, trainError)

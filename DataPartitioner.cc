@@ -893,9 +893,6 @@ float  DataPartitioner::RunNeighbourExpansion(const std::vector<std::vector<std:
   // partition dataset by edge partitioning
   cluster_assign.clear();
   cluster_assign.resize(K);
-  std::set<size_t> left_vertices;
-  for (size_t i = 0; i < labels_vec.size(); ++i)
-    left_vertices.insert(i);
 
   float delta_max = 0;
   float delta_min = 0;
