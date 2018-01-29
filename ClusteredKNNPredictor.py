@@ -119,7 +119,6 @@ class ClusteredKNNPredictor(KNNPredictor):
     Yt = Yt[selRow, :]
     print(str(selRow.shape[0]-np.sum(selRow))+'/'+str(selRow.shape[0])+' test samples removed')
     print('Average label count of the removed samples: '+str(labelCount/(selRow.shape[0]-np.sum(selRow))))
-    print(str(zeroCount))
     '''
     ####
 

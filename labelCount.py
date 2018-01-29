@@ -55,4 +55,8 @@ labelStruct19 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC_100K.pkl",
 
 labelStruct20 = LabelStruct(fileName="../DataSets/DeliciousLarge/deliciousLarge_50K.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_deliciousLarge_50K', initialFeatureProjMatrixFile='', clusterFile = '');
 
-labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12, labelStruct13, labelStruct14, labelStruct15, labelStruct16, labelStruct17, labelStruct18, labelStruct19, labelStruct20];
+labelStruct21 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC_SL1K.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_wikiLSHTC_SL1K', initialFeatureProjMatrixFile='', clusterFile = '');
+
+labelStruct22 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC_SL10K.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_wikiLSHTC_SL10K', initialFeatureProjMatrixFile='', clusterFile = '');
+
+labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12, labelStruct13, labelStruct14, labelStruct15, labelStruct16, labelStruct17, labelStruct18, labelStruct19, labelStruct20, labelStruct21, labelStruct22];

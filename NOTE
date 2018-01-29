@@ -3,4 +3,4 @@
 3. Env variable setting: export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 4. libpython.so path: /usr/lib/x86_64-linux-gnu/
 5. Copy libboost_python3.so.1.66.0 and libboost_numpy3.so.1.66.0 into /usr/local/lib/
-6. DataPartitioner compilation command: g++ -std=c++11 -O2 DataPartitionerWrapper.cpp DataPartitioner.cc -I/usr/include/python3.5 -I/usr/local/include  /usr/local/lib/libboost_python3.so.1.66.0 /usr/local/lib/libboost_numpy3.so.1.66.0  -lpython3.5m -o data_partitioner.so --shared -fPIC
+6. DataPartitioner compilation command: g++ -std=c++11 -O2 DataPartitionerWrapper.cpp DataPartitioner.cc -I/usr/include/python3.4 -I/usr/local/include  /usr/local/lib/libboost_python3.so.1.66.0 /usr/local/lib/libboost_numpy3.so.1.66.0  -lpython3.4m -o data_partitioner.so --shared -fPIC

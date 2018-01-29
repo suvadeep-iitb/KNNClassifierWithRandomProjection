@@ -19,7 +19,13 @@ def CreateSampledDataset(data, sampleSize):
   np.random.seed(1)
 
   # Sample labels
-  perm = np.random.permutation(l)[:sampleSize]
+  #perm = np.random.permutation(l)[:sampleSize]
+  labelFreq = np.array(data.Y.sum(0)).reshape(-1)
+  perm = np.argsort(-labelFreq)[:sampleSize]
+  print('Selected frequecies:')
+  for i in range(perm.shape[0]):
+    print(labelFreq[perm[i]])
+
   Ysam = data.Y[:, perm]
   Ytsam = data.Yt[:, perm]
 

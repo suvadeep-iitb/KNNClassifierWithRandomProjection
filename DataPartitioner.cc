@@ -178,10 +178,14 @@ void get_positives(
 
   auto comp = [](const std::tuple<size_t, float, float> &a, const std::tuple<size_t, float, float> &b) 
   {
+    /*
     if (std::get<1>(a) != std::get<1>(b))
       return std::get<1>(a) > std::get<1>(b);
     else 
       return std::get<2>(a) > std::get<2>(b);
+    */
+    float alpha = 0.5;
+    return ((1 - alpha)*std::get<1>(a)+alpha*std::get<2>(a)) > ((1-alpha)*std::get<1>(b)+alpha*std::get<2>(b));
   };
 
   auto dist = [](const std::vector<std::pair<int, float> > &vec1, const std::vector<std::pair<int, float> > &vec2)
@@ -516,7 +520,6 @@ void get_edge_set(
         if (S.find(y) != S.end()) continue;
 
         S.insert(y);
-        S_minus_C.insert(y);
         left_vertices.erase(y);
 
         clus_ass.insert(x);
@@ -529,12 +532,12 @@ void get_edge_set(
         for (auto it = nn_graph[y].begin(); it != nn_graph[y].end(); ++it)
           if (it->first == x) { nn_graph[y].erase(it); break; }
 #endif
+
         for (auto itz = nn_graph[y].begin(); itz != nn_graph[y].end(); ++itz) {
           size_t z = itz->first;
           if (S.find(z) == S.end()) continue;
 
           edge_count++;
-          clus_ass.insert(z);
 
           itz = nn_graph[y].erase(itz);
           --itz;
@@ -543,16 +546,16 @@ void get_edge_set(
             if (it->first == y) {
               nn_graph[z].erase(it);
 
-              // check whether z becomes an isolated vertex. if so, remove it from left_vertices
-              if (nn_graph[z].size() == 0) left_vertices.erase(z);
               break;
             }
           }
 #endif
         }
+        
+        if (nn_graph[y].size() > 0) S_minus_C.insert(y);
       }
     }
- 
+
     // copy each element of clus_ass into cluster_assignment
     for (auto&& nn: clus_ass) cluster_assignment.insert(nn);
 }

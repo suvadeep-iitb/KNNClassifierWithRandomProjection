@@ -41,35 +41,23 @@ def MyNormalize(X, Xt, norm):
   return XXt[:n, :], XXt[n:, :]
 
 params = {
-  "numLearners": 1,
+  "numLearners": 5,
   "numThreads": 5,
-  "numThreads": 20,
-  "numLearners": 1, # Currently works for only 1
-  "numThreads": 8,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
   "seed": 1,
   "logFile": '',
-  "maxTestSamples": 100000,
-  "maxTrainSamples": 600000}
+  "maxTestSamples": 1000000,
+  "maxTrainSamples": 6000000}
 
-lambdaList = [0.1]
-#lambdaList = [1]
-nnTestList = [3, 5, 10, 20]
-embDimList = [100]
-nnTestList = [5, 10, 20]
-embDimList = [50]
-maxTS = [0]
 
-for i in [18]:
-lambdaList = [0.01, 0.1]
-#lambdaList = [1]
+lambdaList = [0.0001, 0.001, 0.01]
 nnTestList = [10, 20]
 embDimList = [20, 50]
 maxTS = [0]
 
-for i in [1, 2]:
+for i in [4]:
   labelStruct = lc.labelStructs[i]
 
   dataFile = labelStruct.fileName
@@ -116,19 +104,16 @@ for i in [1, 2]:
         params["embDim"] = ed
         print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
 
-        #params["basePredictor"] = KNNPredictor(params)
-        #knnPredictor = EnsembleKNNPredictor(params)
-        knnPredictor = KNNPredictor(params)
+        params["basePredictor"] = KNNPredictor(params)
+        knnPredictor = EnsembleKNNPredictor(params)
         knnPredictor.Train(data.X, 
                          data.Y,
-                         maxTrainSamples = params['maxTrainSamples'],
                          numThreads = params['numThreads'])
         testResList = knnPredictor.PredictAndComputePrecision(
                          data.Xt,
                          data.Yt,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 40))
                          max(params['numThreads'], 30))
         '''
         trainResList = knnPredictor.PredictAndComputePrecision(
@@ -136,7 +121,6 @@ for i in [1, 2]:
                          data.Y,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 40))
                          max(params['numThreads'], 30))
         '''
         #resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'

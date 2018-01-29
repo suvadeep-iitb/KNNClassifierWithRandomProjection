@@ -255,13 +255,14 @@ class LabelRand:
     print(str(datetime.now())+' : Cluster selection accuracy in valid set '+str(np.sum([Yte[i, labels[i]] for i in range(Yte.shape[0])])/float(Yte.shape[0])))
     self.log_ += str(datetime.now())+' : Cluster selection accuracy in valid set '+str(np.sum([Yte[i, labels[i]] for i in range(Yte.shape[0])])/float(Yte.shape[0]))+'\n'
 
-    self.centers_ = self.clf_.W
-    del Xtr, Xte, Ytr, Yte, predYte, predYtr, labels
-
     print(str(datetime.now())+' : Computing label assignment for each example')
     self.log_ += str(datetime.now())+' : Computing label assignment for each example\n'
     predY = csr_matrix(self.clf_.Predict(X, numThreads = self.n_jobs_))
     self.labels_ = np.array(predY.argmax(1)).reshape(-1)
+
+    self.centers_ = self.clf_.W
+    del Xtr, Xte, Ytr, Yte, predYte, predYtr, labels
+
     print(str(datetime.now())+' : Final cluster assignments:')
     self.log_ += str(datetime.now())+' : Final cluster assignments:\n'
     self.Y_ = []
@@ -353,6 +354,7 @@ class LabelNeighbourExpensionEP(LabelRand):
 
     if (self.res_file_):
       pickle.dump(self.cluster_assignments_, open(self.res_file_, 'wb'));
+
 
 
 class LabelNeighbourExpensionVP(LabelNeighbourExpensionEP):
