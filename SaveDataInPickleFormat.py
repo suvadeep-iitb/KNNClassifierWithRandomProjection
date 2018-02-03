@@ -6,49 +6,98 @@ import labelCount as lc
 from multiprocessing import Pool
 import sys
 
+def CountStatistics(filename):
+  print('reading file ' + filename)
+
+  nExamples = 0
+  totFeatures = 0
+  with open(filename) as fin:
+    line = fin.readline().split()
+    while line:
+      nExamples += 1
+      assert(len(line)>=2)
+      totFeatures += len(line)-2
+      line = fin.readline().split()
+
+  return nExamples, totFeatures
 
 
-def ReadDataFromSVMLightFile(fileName):
-  print('Reading file ' + fileName)
-  with open(fileName) as fin:
+
+def ReadDataFromSVMLightFile(filename):
+  print('reading file ' + filename)
+  with open(filename) as fin:
     line = fin.readline().strip().split()
-    nExamples = int(line[0])
-    nFeatures = int(line[1])
-    nLabels = int(line[2])
-    X = lil_matrix((nExamples, nFeatures+1), dtype=np.float)
-    Y = lil_matrix((nExamples, nLabels+1), dtype=np.float)
-    for i in range(nExamples):
+    nexamples = int(line[0])
+    nfeatures = int(line[1])
+    nlabels = int(line[2])
+    x = lil_matrix((nexamples, nfeatures+1), dtype=np.float)
+    y = lil_matrix((nexamples, nlabels+1), dtype=np.float)
+    for i in range(nexamples):
       line = fin.readline().strip().split(',')
       if (len(line) > 1):
         for l in line[:-1]:
-          Y[i, int(l)] = 1
+          y[i, int(l)] = 1
       features = line[-1].split()
       if ':' not in features[0]:
-        Y[i, int(features[0])] = 1
+        y[i, int(features[0])] = 1
         features = features[1:]
       for f in features:
         try:
-          fId, fVal = f.split(':')
+          fid, fval = f.split(':')
         except:
-          print('Error at: ' + str(i) + ' ' + f)
+          print('error at: ' + str(i) + ' ' + f)
           exit()
-        if (float(fVal) != 0):
-          X[i, int(fId)] = float(fVal)
-  # Make sure the feature id start from zero
-  if (X[:, 0].nnz == 0):
-    X = X[:, 1:]
+        if (float(fval) != 0):
+          x[i, int(fid)] = float(fval)
+  # make sure the feature id start from zero
+  if (x[:, 0].nnz == 0):
+    x = x[:, 1:]
   else:
-    assert(X[:, nFeatures].nnz == 0)
-    X = X[:, :nFeatures]
-  # Also make sure the label id start from zero
-  if (Y[:, 0].nnz == 0):
-    Y = Y[:, 1:]
+    assert(x[:, nfeatures].nnz == 0)
+    x = x[:, :nfeatures]
+  # also make sure the label id start from zero
+  if (y[:, 0].nnz == 0):
+    y = y[:, 1:]
   else:
-    assert(Y[:, nLabels].nnz == 0)
-    Y = Y[:, :nLabels]
-  # convert X and Y into csr_matrix and return
-  return csr_matrix(X), csr_matrix(Y)
+    assert(y[:, nlabels].nnz == 0)
+    y = y[:, :nlabels]
+  # convert x and y into csr_matrix and return
+  return csr_matrix(x), csr_matrix(y)
 
+
+
+def ReadDataFromODPFile(filename):
+  nExamples, totFeatures = CountStatistics(filename)
+  print('# of examples: '+str(nExamples)+' # of features: '+str(totFeatures))
+
+  indptr = np.zeros((nExamples+1,), dtype=np.int64)
+  indices = np.zeros((totFeatures,), dtype=np.int32)
+  data = np.zeros((totFeatures,), dtype=np.float)
+
+  l_indptr = np.zeros((nExamples+1,), dtype=np.int64)
+  l_indices = np.zeros((nExamples,), dtype=np.int32)
+  l_data = np.zeros((nExamples,), dtype=np.float)
+
+  with open(filename) as fin:
+    indptr[0] = 0
+    l_indptr[0] = 0
+    for e in range(nExamples):
+      line = fin.readline().split()
+      l_indptr[e+1] = e+1
+      l_indices[e] = int(line[0])
+      l_data[e] = 1.0
+      line = line[2:]
+      indptr[e+1] = indptr[e]+len(line)
+      for p in range(len(line)):
+        fid, fval = line[p].split(':')
+        indices[indptr[e]+p] = int(fid)
+        data[indptr[e]+p] = float(fval)
+  assert(indptr[nExamples] == totFeatures)
+
+  x = csr_matrix((data, indices, indptr))
+  y = csr_matrix((l_data, l_indices, l_indptr))
+
+  return x, y
 
 
 def ReadDataFromRelatedSearchFile(fileName):
@@ -88,8 +137,8 @@ if __name__ == '__main__':
   if pickleFile[-4:] != '.pkl':
     pickleFile = pickleFile + '.pkl'
 
-  X, Y = ReadDataFromSVMLightFile(trainFile)
-  Xt, Yt = ReadDataFromSVMLightFile(testFile)
+  X, Y = ReadDataFromODPFile(trainFile)
+  Xt, Yt = ReadDataFromODPFile(testFile)
   
   data = Data(X = X, Y = Y, Xt = Xt, Yt = Yt)
   pickle.dump(data, open(pickleFile, 'wb'), pickle.HIGHEST_PROTOCOL)

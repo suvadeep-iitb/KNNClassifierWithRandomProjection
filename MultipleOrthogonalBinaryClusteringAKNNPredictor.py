@@ -44,7 +44,7 @@ class MultipleOrthogonalBinaryClusteringAKNNPredictor(RandomEmbeddingAKNNPredict
     return pickle.load(open(paramSaveFile, 'rb'))
 
 
-  def LearnParams(self, X, Y, itr=1, numThreads=1):
+  def LearnParams(self, X, Y, numThreads=1, itr=1):
     featureDim = X.shape[1]
     self.featureProjMatrix = GenerateInitialFeatureProjectionMatrix(featureDim, self.embDim, self.initialFeatureProjMatrixFile, self.seed)
     self.labelProjMatrix = GenerateInitialLabelProjectionMatrix(X, Y, self.embDim, self.seed+1023)

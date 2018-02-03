@@ -39,7 +39,7 @@ class MulticlassPredictor:
 
     print(str(datetime.now()) + " : " + "Starting training")
     # Perform label projection and learn regression parameters
-    self.LearnParams(X_sam, Y_sam, self.itr, numThreads)
+    self.LearnParams(X_sam, Y_sam, numThreads, self.itr)
 
 
   def Predict(self, Xt, numThreads = 1):
@@ -133,7 +133,7 @@ class MulticlassPredictor:
     return self.W
 
 
-  def LearnParams(self, X, Y, itr, numThreads):
+  def LearnParams(self, X, Y, numThreads, itr):
     L = self.labelDim
     D = self.featureDim
     C = self.lamb
@@ -141,13 +141,15 @@ class MulticlassPredictor:
     # Perform linear regression using liblinear
     resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Y[:, l], X, l, C) for l in range(L))
 
+    avgTrainError = sum([resultList[l][2] for l in range(L)])/L
+    print("Mean training Error: "+str(avgTrainError))
+
     # Collect the model parameters into a matrix
     W = np.zeros((D+1, 0), dtype=np.float);
     for l in range(L):
-      coeff = np.vstack((resultList[l][0].reshape((-1, 1)), resultList[l][1].reshape(1, 1)))    
+      coeff = np.vstack((resultList[0][0].reshape((-1, 1)), resultList[0][1].reshape(1, 1)))    
       W = np.hstack((W, coeff))
-    avgTrainError = sum([resultList[l][2] for l in range(L)])/L
-    print("Mean training Error: "+str(avgTrainError))
+      del resultList[0]
  
     self.W = W
     self.trainError = avgTrainError
@@ -183,16 +185,4 @@ def TrainWrapper(Z, X, l, C):
 
 
 
-def ComputePrecisionInner(predYt, Yt, K):
-  assert(predYt.shape == Yt.shape)
-  nt = Yt.shape[0]
-  precision = np.zeros((K, 1), dtype=np.float)
-  for i in range(Yt.shape[0]):
-    nzero = Yt[i, :].getnnz()
-    for j in range(min(nzero, K)):
-      if (Yt[i, predYt[i, j]] > 0):
-        for k in range(j, K):
-          precision[k, 0] += 1/float(k+1)
-  precision /= float(nt)
-  return precision
 

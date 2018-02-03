@@ -30,9 +30,9 @@ class EnsembleRandProjKNNPredictor(RandomEmbeddingAKNNPredictor):
       self.learnerList.append(newBasePredictor)
 
 
-  def LearnParams(self, X, Y, itr, numThreads):
+  def LearnParams(self, X, Y, numThreads, itr):
     for i in range(len(self.learnerList)):
-      self.learnerList[i].LearnParams(X, Y, itr, numThreads)
+      self.learnerList[i].LearnParams(X, Y, numThreads, itr)
 
 
   def EmbedFeature(self, X, numThreads):
