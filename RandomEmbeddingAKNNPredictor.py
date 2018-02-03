@@ -81,7 +81,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
     return self.labelProjMatrix
 
 
-  def LearnParams(self, X, Y, itr, numThreads):
+  def LearnParams(self, X, Y, numThreads, itr):
     L = Y.shape[1]
     D = X.shape[1]
     embDim = self.embDim
