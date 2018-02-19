@@ -4,10 +4,10 @@ import numpy as np
 from scipy.sparse import csr_matrix, vstack, hstack, issparse
 from sklearn.preprocessing import normalize
 import labelCount as lc
-#from KNNPredictor import KNNPredictor as KNNPredictor
-from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
-from EnsembleKNNPredictor import EnsembleKNNPredictor
-#from OneVsRestEmbeddingAKNNPredictor import OneVsRestEmbeddingAKNNPredictor as KNNPredictor
+from KNNPredictor import KNNPredictor as KNNPredictor
+#from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
+#from EnsembleRandProjKNNPredictor import EnsembleRandProjKNNPredictor
+
 
 
 #Data = namedtuple("Data", "X Y Xt Yt")
@@ -42,34 +42,22 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1,
-  "numThreads": 5,
   "numThreads": 20,
-  "numLearners": 1, # Currently works for only 1
-  "numThreads": 8,
-  "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
   "seed": 1,
+  "itr": 1,
   "logFile": '',
-  "maxTestSamples": 100000,
-  "maxTrainSamples": 600000}
+  "maxTestSamples": 200000,
+  "maxTrainSamples": 6000000}
 
-lambdaList = [0.1]
-#lambdaList = [1]
-nnTestList = [3, 5, 10, 20]
-embDimList = [100]
-nnTestList = [5, 10, 20]
-embDimList = [50]
+
+lambdaList = [1]
+nnTestList = [10]
+embDimList = [20]
 maxTS = [0]
 
-for i in [18]:
-lambdaList = [0.01, 0.1]
-#lambdaList = [1]
-nnTestList = [10, 20]
-embDimList = [20, 50]
-maxTS = [0]
-
-for i in [1, 2]:
+for i in [25]:
   labelStruct = lc.labelStructs[i]
 
   dataFile = labelStruct.fileName
@@ -93,16 +81,8 @@ for i in [1, 2]:
   data.Y = data.Y[:, nonemptyLabels]
   data.Yt = data.Yt[:, nonemptyLabels]
 
-  params["featureDim"] = data.X.shape[1]
-  params["labelDim"] = data.Y.shape[1]
-
-
   # Normalize data
   data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
-
-  # Append a constant column to the feature matrix
-  #data.X = hstack((data.X, csr_matrix(np.ones((data.X.shape[0], 1), dtype=float))/np.sqrt(data.X.shape[1])))
-  #data.Xt = hstack((data.Xt, csr_matrix(np.ones((data.Xt.shape[0], 1), dtype=float))/np.sqrt(data.Xt.shape[1])))
 
   params["featureDim"] = data.X.shape[1]
   params["labelDim"] = data.Y.shape[1]
@@ -116,8 +96,6 @@ for i in [1, 2]:
         params["embDim"] = ed
         print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
 
-        #params["basePredictor"] = KNNPredictor(params)
-        #knnPredictor = EnsembleKNNPredictor(params)
         knnPredictor = KNNPredictor(params)
         knnPredictor.Train(data.X, 
                          data.Y,
@@ -128,20 +106,17 @@ for i in [1, 2]:
                          data.Yt,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 40))
-                         max(params['numThreads'], 30))
+                         max(params['numThreads'], 20))
         '''
         trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
-                         nnTestList,
+                         #nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 40))
-                         max(params['numThreads'], 30))
+                         max(params['numThreads'], 20))
         '''
-        #resFile = 'Results/OvRRP_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-        #resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-        resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+        resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
+        #resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
         pickle.dump({'testRes' : testResList, 
                      #'trainRes' : trainResList, 
                      'nnTestList' : nnTestList, 

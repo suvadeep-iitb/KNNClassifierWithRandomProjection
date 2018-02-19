@@ -1,9 +1,9 @@
 import pickle
 import labelCount as lc
 
-lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
+lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
 
-for i in [5, 14]:
+for i in [25]:
     labelStruct = lc.labelStructs[i]
     
     resFilePrefix = labelStruct.resFile
@@ -13,8 +13,8 @@ for i in [5, 14]:
     for lamb in lambdaList:
       resFile = 'Results/Multiclass_'+resFilePrefix+'_TS0'+'_L'+str(lamb)+'.pkl'
       res = pickle.load(open(resFile, 'rb'))
-      if bestPrecision[0] < res['testRes']['prcision'][0]:
-        bestPrecision = res['testRes']['prcision']
+      if bestPrecision[0] < res['testRes']['precision'][0]:
+        bestPrecision = res['testRes']['precision']
         #bestPrecisionTrain = res['trainRes']['precision']
         bestLambda = lamb
     print('File: '+labelStruct.fileName+' Emb dim: ')

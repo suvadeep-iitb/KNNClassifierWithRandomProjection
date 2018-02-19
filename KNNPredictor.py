@@ -6,6 +6,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse
 import math
 import numpy as np
+from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.neighbors import NearestNeighbors
 
 class KNNPredictor:
@@ -19,20 +20,7 @@ class KNNPredictor:
   def Train(self, X, Y, maxTrainSamples, numThreads):
     assert(X.shape[0] == Y.shape[0])
 
-    if issparse(X):
-      # The python interface of nmslib library most probably does not support sparse input
-      # Use KDTree of sklearn package
-      print(str(datetime.now()) + " : " + "Creating KNN graph over train examples using sklearn functions")
-      self.graph = NearestNeighbors(n_neighbors = 10, radius = 5, 
-                                    algorithm = 'auto', metric = 'l2',
-                                    n_jobs = numThreads)
-      self.graph.fit(X)
-    else:
-      print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples using HANN")
-      self.graph = nmslib.init(method='hnsw', space='l2')
-      self.graph.addDataPointBatch(X)
-      self.graph.createIndex({'post': 2, 'M': 10, 'maxM0': 20}, print_progress=False)
-  
+    self.X = X 
     self.Y = Y
 
 
@@ -87,18 +75,9 @@ class KNNPredictor:
 
 
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
-    if (issparse(Xt)):
-      KNN = self.graph.kneighbors(Xt, nnTest, return_distance = False)
-    else:
-      neighbors = self.graph.knnQueryBatch(Xt, nnTest, num_threads=numThreads)
-      # Create the KNN matrix
-      KNN = np.zeros((Xt.shape[0], nnTest), dtype=np.int64);
-      for i,nei in enumerate(neighbors):
-        if (len(nei[0]) < nnTest):
-          print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
-        KNN[i, :] = nei[0]
-
-    return KNN
+    dist = euclidean_distances(Xt, self.X)
+    knn = np.argsort(dist, axis = 1)[:, :nnTest]
+    return knn
   
 
 
@@ -112,6 +91,7 @@ class KNNPredictor:
     maxNNTest = max(nnTestList)
     # Compute K nearest neighbors for input data
     print(str(datetime.now()) + " : " + "Computing KNN")
+    print(str(nnTestList))
     knn = self.ComputeKNN(Xt, maxNNTest, numThreads);
     
     resList = []

@@ -72,6 +72,8 @@ class MulticlassPredictor:
   def ComputeLabelScore(self, Xt, numThreads = 1):
     nt = Xt.shape[0]
     L = self.labelDim
+
+    '''
     batchSize = int(math.ceil(float(nt)/numThreads))
     numBatches = int(math.ceil(float(nt)/batchSize))
     startIdx = [i*batchSize for i in range(numBatches)]
@@ -83,6 +85,8 @@ class MulticlassPredictor:
       predYt = vstack(resultList, format='lil')
     else:
       predYt = np.vstack(resultList)
+    '''
+    predYt = self.ComputeLabelScoreInner(Xt)
 
     assert(predYt.shape[0] == nt)
     return predYt
@@ -116,6 +120,8 @@ class MulticlassPredictor:
       print(str(datetime.now()) + " : " + "Computing precisions")
       precBatch = self.ComputePrecision(predYt, Yt[bs:be, :], 5, numThreads)
       precision += precBatch * (be - bs)
+    nt, L = Yt.shape
+
     #res = {'Y': Yt, 'predY': predYt, 'scoreY': scoreYt, 'precision': precision, 'testSample': testSample}
     res = {'precision': precision/Xt.shape[0]}
 
@@ -149,7 +155,7 @@ class MulticlassPredictor:
     if (issparse(X)):
       pX = X * self.W[:-1, :] + self.W[-1, :]
     else:
-      pX = np.matmul(X, self.W[:-1, :]) + self.W[-1, :];
+      pX = np.matmul(X, self.W[:-1, :]) + self.W[-1, :]
     return pX
 
 
@@ -180,10 +186,10 @@ class MulticlassPredictor:
       coeff = np.vstack((resultList[0][0].reshape((-1, 1)), resultList[0][1].reshape(1, 1)))    
       W = np.hstack((W, coeff))
       del resultList[0]
- 
+    avgTrainError = avgTrainError/L
+    print("Mean training Error: "+str(avgTrainError))
     self.W = W
     self.trainError = avgTrainError
-
 
 
   def MeanSquaredError(self, X, Y, maxSamples):
@@ -196,7 +202,6 @@ class MulticlassPredictor:
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yscore = self.EmbedFeature(Xsam)
     return mean_squared_error(Ysam, Yscore)
-
 
 
 def TrainWrapper(Z, X, l, C):

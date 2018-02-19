@@ -59,4 +59,10 @@ labelStruct21 = LabelStruct(fileName="../DataSets/Odp/odp_500K.pkl", totalCount=
 
 labelStruct22 = LabelStruct(fileName="../DataSets/Odp/odp.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_odp', initialFeatureProjMatrixFile='', clusterFile = '');
 
-labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12, labelStruct13, labelStruct14, labelStruct15, labelStruct16, labelStruct17, labelStruct18, labelStruct19, labelStruct20, labelStruct21, labelStruct22];
+labelStruct23 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC_SL1K.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_wikiLSHTC_SL1K', initialFeatureProjMatrixFile='', clusterFile = '');
+
+labelStruct24 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC_SL10K.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_wikiLSHTC_SL10K', initialFeatureProjMatrixFile='', clusterFile = '');
+
+labelStruct25 = LabelStruct(fileName="../DataSets/WikiLSHTC/wikiLSHTC_SL1K_small.pkl", totalCount=0, maxCount=0, avgCount=0, resFile='res_wikiLSHTC_SL1K_small', initialFeatureProjMatrixFile='', clusterFile = '');
+
+labelStructs = [labelStruct0, labelStruct1, labelStruct2, labelStruct3, labelStruct4, labelStruct5, labelStruct6, labelStruct7, labelStruct8, labelStruct9, labelStruct10, labelStruct11, labelStruct12, labelStruct13, labelStruct14, labelStruct15, labelStruct16, labelStruct17, labelStruct18, labelStruct19, labelStruct20, labelStruct21, labelStruct22, labelStruct23, labelStruct24, labelStruct25];

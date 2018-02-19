@@ -1,19 +1,12 @@
 import pickle
 import labelCount as lc
 
-<<<<<<< Updated upstream
-lambdaList = [0.0001, 0.001, 0.01, 0.1]
+lambdaList = [1]
 nnTestList = [10]
-embDimList = [20, 50]
+embDimList = [20]
 
-for i in [18]:
-=======
-lambdaList = [0.01, 0.1]
-nnTestList = [10, 20]
-embDimList = [20, 50]
 
-for i in [1, 2]:
->>>>>>> Stashed changes
+for i in [25]:
     labelStruct = lc.labelStructs[i]
     
     resFilePrefix = labelStruct.resFile
@@ -23,7 +16,7 @@ for i in [1, 2]:
         bestPrecisionTrain = [-1]*5;
         bestLambda = 0;
         for lamb in lambdaList:
-          resFile = 'Results/RandProj_'+resFilePrefix+'_TS0'+'_L'+str(lamb)+'_D'+str(embDim)+'.pkl'
+          resFile = 'Results/KNN_'+resFilePrefix+'_TS0'+'_L'+str(lamb)+'_D'+str(embDim)+'.pkl'
           res = pickle.load(open(resFile, 'rb'))
           if bestPrecision[0] < res['testRes'][nn]['precision'][0]:
             bestPrecision = res['testRes'][nn]['precision']

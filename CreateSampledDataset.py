@@ -12,6 +12,12 @@ class Data:
 
 
 def CreateSampledDataset(data, sampleSize):
+  ####
+  perm = np.random.permutation(data.X.shape[0])[:200000]
+  data.X = data.X[perm, :]
+  data.Y = data.Y[perm, :]
+  ####
+
   [n, d] = data.X.shape
   [nt, d] = data.Xt.shape
   [n, l] = data.Y.shape
@@ -19,13 +25,14 @@ def CreateSampledDataset(data, sampleSize):
   np.random.seed(1)
 
   # Sample labels
-  perm = np.random.permutation(l)[:sampleSize]
-  Ysam = data.Y[:, perm]
-  Ytsam = data.Yt[:, perm]
+  labelFreq = np.array(data.Y.sum(0)).reshape(-1)
+  sortedLabels = np.argsort(-labelFreq)
+  print('Min label frequency: '+str(labelFreq[sortedLabels[sampleSize-1]]))
+  Ysam = data.Y[:, sortedLabels[:sampleSize]]
+  Ytsam = data.Yt[:, sortedLabels[:sampleSize]]
 
   print(str(Ysam.shape))
   print(str(Ytsam.shape))
-  print(str(perm.shape))
 
   # Remove examples from the train data zero active labels
   labelCountPerExamples = Ysam.getnnz(1)
@@ -37,6 +44,16 @@ def CreateSampledDataset(data, sampleSize):
   Xt = data.Xt[labelCountPerExamples>0, :]
   Yt = Ytsam[labelCountPerExamples>0, :]
 
+  # Remove the zero features
+  fc = np.array((X != 0).sum(0)).reshape(-1)
+  X = X[:, fc]
+  Xt = Xt[:, fc]
+
+  # Shorten test samples
+  perm = np.random.permutation(Xt.shape[0])[:20000]
+  Xt = Xt[perm, :]
+  Yt = Yt[perm, :]
+
   data.X = X
   data.Y = Y
   data.Xt = Xt
@@ -47,6 +64,7 @@ def CreateSampledDataset(data, sampleSize):
   assert(data.Y.shape[1] == data.Yt.shape[1])
 
   print("Active labels: "+str(data.Y.shape[1]))
+  print("Number of features: "+str(data.X.shape[1]))
   print("New trainset size: "+str(data.X.shape[0]))
   print("New testset size: "+str(data.Xt.shape[0]))
 

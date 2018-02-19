@@ -39,19 +39,19 @@ def MyNormalize(X, Xt, norm):
 
 params = {
   "numLearners": 1, # Currently works for only 1
-  "numThreads": 40,
+  "numThreads": 20,
   "embDim": 15,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
   "seed": 1,
-  "maxTestSamples": 10000,
+  "itr": 10,
+  "maxTestSamples": 20000,
   "maxTrainSamples": 600000}
 
-lambdaList = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000]
-#lambdaList = [1]
+lambdaList = [0.0001, 0.001, 0.01, 0.1, 1]
 maxTS = [0]
 
-for i in [15, 2]:
+for i in [25]:
   labelStruct = lc.labelStructs[i]
   dataFile = labelStruct.fileName
   print("Running for " + dataFile)
@@ -97,16 +97,14 @@ for i in [15, 2]:
                          data.Yt,
                          maxTestSamples = params['maxTestSamples'],
                          numThreads = max(params['numThreads'], 15))
-        '''
         trainRes = multiclassPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
                          maxTestSamples = params['maxTestSamples'],
                          numThreads = max(params['numThreads'], 15))
-        '''
         resFile = 'Results/Multiclass_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'.pkl'
         pickle.dump({'testRes' : testRes,
-                     #'trainRes' : trainRes,
+                     'trainRes' : trainRes,
                      #'paramMatrix' : multiclassPredictor.W,
                      #'trainSample' : multiclassPredictor.sampleIndices,
                      #'trainError' : multiclassPredictor.trainError,
