@@ -19,6 +19,9 @@ class MulticlassPredictor:
   def __init__(self, params):
     self.lamb = params['lamb']
     self.itr = params['itr']
+    self.logFile = params['logFile']
+    self.seed = params['seed']
+    self.embDim = params['embDim']
     self.sampleIndices = []
 
 
@@ -52,6 +55,14 @@ class MulticlassPredictor:
     return predYt
 
 
+  def UpdateLogFile(self, logFile):
+    self.logFile = logFile
+
+
+  def UpdateSeed(self, seed):
+    self.seed = seed
+
+
   def LoadModel(self, W):
     self.W = W
     self.featureDim = W.shape[0]-1
@@ -81,7 +92,7 @@ class MulticlassPredictor:
     return self.EmbedFeature(Xt)
 
 
-  def PredictAndComputePrecision(self, Xt, Yt, maxTestSamples, numThreads):
+  def PredictAndComputePrecision(self, Xt, Yt, maxTestSamples = 0, numThreads = 1):
     assert(Xt.shape[0] == Yt.shape[0])
     assert(Xt.shape[1] == self.featureDim)
     assert(Yt.shape[1] == self.labelDim)
@@ -90,15 +101,23 @@ class MulticlassPredictor:
     if (maxTestSamples > 0):
       Xt, Yt, testSample = DownSampleData(Xt, Yt, maxTestSamples)
 
-    # Predict labels for input data
-    print(str(datetime.now()) + " : " + "Performing prediction")
-    predYt = self.Predict(Xt, numThreads)
+    maxMem = 2**26
+    batchSize = int(maxMem / self.labelDim)
+    print(str(datetime.now()) + " : " + "Batch size used for prediction: "+str(batchSize))
 
-    # Compute precisions for impute data
-    print(str(datetime.now()) + " : " + "Computing precisions")
-    precision = self.ComputePrecision(predYt, Yt, 5, numThreads)
+    precision = 0
+    for bs in range(0, Xt.shape[0], batchSize):
+      be = min(bs + batchSize, Xt.shape[0])
+      # Predict labels for input data
+      print(str(datetime.now()) + " : " + "Performing prediction for "+str(int(bs/batchSize+1))+"-th batch")
+      predYt = self.Predict(Xt[bs:be, :], numThreads)
+
+      # Compute precisions for impute data
+      print(str(datetime.now()) + " : " + "Computing precisions")
+      precBatch = self.ComputePrecision(predYt, Yt[bs:be, :], 5, numThreads)
+      precision += precBatch * (be - bs)
     #res = {'Y': Yt, 'predY': predYt, 'scoreY': scoreYt, 'precision': precision, 'testSample': testSample}
-    res = {'precision': precision}
+    res = {'precision': precision/Xt.shape[0]}
 
     return res
 
@@ -122,6 +141,11 @@ class MulticlassPredictor:
 
 
   def EmbedFeature(self, X, numThreads=1):
+    if (X.shape[1] != self.embDim):
+      if issparse(X):
+        X = X * self.featureProjMatrix
+      else:
+        X = np.matmul(X, self.featureProjMatrix)
     if (issparse(X)):
       pX = X * self.W[:-1, :] + self.W[-1, :]
     else:
@@ -138,6 +162,12 @@ class MulticlassPredictor:
     D = self.featureDim
     C = self.lamb
 
+    self.featureProjMatrix = np.random.randn(D, self.embDim)/np.sqrt(float(self.embDim))
+    if issparse(X):
+      X = X * self.featureProjMatrix
+    else:
+      X = np.matmul(X, self.featureProjMatrix)
+
     # Perform linear regression using liblinear
     resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Y[:, l], X, l, C) for l in range(L))
 
@@ -145,7 +175,7 @@ class MulticlassPredictor:
     print("Mean training Error: "+str(avgTrainError))
 
     # Collect the model parameters into a matrix
-    W = np.zeros((D+1, 0), dtype=np.float);
+    W = np.zeros((self.embDim+1, 0), dtype=np.float);
     for l in range(L):
       coeff = np.vstack((resultList[0][0].reshape((-1, 1)), resultList[0][1].reshape(1, 1)))    
       W = np.hstack((W, coeff))
@@ -157,6 +187,12 @@ class MulticlassPredictor:
 
 
   def MeanSquaredError(self, X, Y, maxSamples):
+    if (X.shape != self.embDim):
+      if issparse(X):
+        X = X * self.featureProjMatrix
+      else:
+        X = np.matmul(X, self.featureProjMatrix)
+      
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yscore = self.EmbedFeature(Xsam)
     return mean_squared_error(Ysam, Yscore)
