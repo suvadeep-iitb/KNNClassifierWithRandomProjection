@@ -21,6 +21,7 @@ class MulticlassPredictor:
     self.itr = params['itr']
     self.logFile = params['logFile']
     self.seed = params['seed']
+    self.embDim = params['embDim']
     self.sampleIndices = []
 
 
@@ -140,6 +141,11 @@ class MulticlassPredictor:
 
 
   def EmbedFeature(self, X, numThreads=1):
+    if (X.shape[1] != self.embDim):
+      if issparse(X):
+        X = X * self.featureProjMatrix
+      else:
+        X = np.matmul(X, self.featureProjMatrix)
     if (issparse(X)):
       pX = X * self.W[:-1, :] + self.W[-1, :]
     else:
@@ -156,6 +162,12 @@ class MulticlassPredictor:
     D = self.featureDim
     C = self.lamb
 
+    self.featureProjMatrix = np.random.randn(D, self.embDim)/np.sqrt(float(self.embDim))
+    if issparse(X):
+      X = X * self.featureProjMatrix
+    else:
+      X = np.matmul(X, self.featureProjMatrix)
+
     # Perform linear regression using liblinear
     resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Y[:, l], X, l, C) for l in range(L))
 
@@ -163,7 +175,7 @@ class MulticlassPredictor:
     print("Mean training Error: "+str(avgTrainError))
 
     # Collect the model parameters into a matrix
-    W = np.zeros((D+1, 0), dtype=np.float);
+    W = np.zeros((self.embDim+1, 0), dtype=np.float);
     for l in range(L):
       coeff = np.vstack((resultList[0][0].reshape((-1, 1)), resultList[0][1].reshape(1, 1)))    
       W = np.hstack((W, coeff))
@@ -175,6 +187,12 @@ class MulticlassPredictor:
 
 
   def MeanSquaredError(self, X, Y, maxSamples):
+    if (X.shape != self.embDim):
+      if issparse(X):
+        X = X * self.featureProjMatrix
+      else:
+        X = np.matmul(X, self.featureProjMatrix)
+      
     Xsam, Ysam, _ = DownSampleData(X, Y, maxSamples)
     Yscore = self.EmbedFeature(Xsam)
     return mean_squared_error(Ysam, Yscore)
