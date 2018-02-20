@@ -25,7 +25,7 @@ class OneVsRestEmbeddingAKNNPredictor(RandomEmbeddingAKNNPredictor):
     super(OneVsRestEmbeddingAKNNPredictor, self).__init__(params)
 
 
-  def LearnParams(self, X, Y, itr, numThreads):
+  def LearnParams(self, X, Y, numThreads, itr):
     L = self.labelDim
     D = self.featureDim
     embDim = self.embDim
