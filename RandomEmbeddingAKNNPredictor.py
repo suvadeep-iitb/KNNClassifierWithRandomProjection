@@ -29,6 +29,8 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
   def Train(self, X, Y, maxTrainSamples = 0, numThreads = 1, itr = 10):
     assert(X.shape[0] == Y.shape[0])
+    self.featureDim = X.shape[1]
+    self.labelDim = Y.shape[1]
 
     print(str(datetime.now()) + " : " + "Performing down-sampling")
     # Sample train data for faster training
