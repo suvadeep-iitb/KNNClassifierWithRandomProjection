@@ -273,28 +273,18 @@ class DataPartitionerWrapper
                                           verbose);
     }
 
-    float RunNeighbourExpansionEP(np::ndarray const & feature_indices,
-                               np::ndarray const & feature_data,
-                               np::ndarray const & feature_indptr,
-                               np::ndarray const & label_indices,
+    float RunNeighbourExpansionEP(np::ndarray const & label_indices,
                                np::ndarray const & label_indptr,
                                np::ndarray & partitions,
                                size_t K, size_t num_nn, int label_normalize,
                                float replication_factor, int seed, int verbose)
     {
-      assert(feature_indptr.shape(0) == label_indptr.shape(0));
-      assert(feature_data.shape(0) == feature_indices.shape(0));
-
-      vector<vector<pair<int, float>>> feature_vec;
-      csr_sparse2vec(feature_indices, feature_data, feature_indptr, feature_vec);
-
       vector<vector<int> > label_vec;
       vector<set<size_t> > cluster_assign;
       csr_sparse2vec(label_indices, label_indptr, label_vec);
 
       dataPartitioner_.Clear();
-      float rep_factor = dataPartitioner_.RunNeighbourExpansion(feature_vec,
-                                                        label_vec, cluster_assign,
+      float rep_factor = dataPartitioner_.RunNeighbourExpansion(label_vec, cluster_assign,
                                                         K, num_nn, label_normalize,
                                                         replication_factor, false, seed,
                                                         verbose);
@@ -340,28 +330,18 @@ class DataPartitionerWrapper
       return rep_factor;
     }
 
-    float RunNeighbourExpansionVP(np::ndarray const & feature_indices,
-                               np::ndarray const & feature_data,
-                               np::ndarray const & feature_indptr,
-                               np::ndarray const & label_indices,
+    float RunNeighbourExpansionVP(np::ndarray const & label_indices,
                                np::ndarray const & label_indptr,
                                np::ndarray & partitions,
                                size_t K, size_t num_nn, int label_normalize,
                                float replication_factor, int seed, int verbose)
     {
-      assert(feature_indptr.shape(0) == label_indptr.shape(0));
-      assert(feature_data.shape(0) == feature_indices.shape(0));
-
-      vector<vector<pair<int, float>>> feature_vec;
-      csr_sparse2vec(feature_indices, feature_data, feature_indptr, feature_vec);
-
       vector<vector<int> > label_vec;
       vector<set<size_t> > cluster_assign;
       csr_sparse2vec(label_indices, label_indptr, label_vec);
 
       dataPartitioner_.Clear();
-      float rep_factor = dataPartitioner_.RunNeighbourExpansion(feature_vec,
-                                             label_vec, cluster_assign,
+      float rep_factor = dataPartitioner_.RunNeighbourExpansion(label_vec, cluster_assign,
                                              K, num_nn, label_normalize,
                                              replication_factor, true, seed,
                                              verbose);

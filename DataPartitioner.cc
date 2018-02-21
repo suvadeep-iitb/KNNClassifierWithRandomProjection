@@ -171,141 +171,6 @@ size_t update_cvec(
 }
 
 void get_positives(
-    const std::vector<std::vector<std::pair<int, float> > > &data_vec,
-    const std::vector<std::vector<int> > &labels_vec,
-    size_t num_pos, int label_normalize, size_t cost_per_sample, int verbose,
-    std::vector<std::vector<std::tuple<size_t, float, float> > > *pos_vec) {
-
-  auto comp = [](const std::tuple<size_t, float, float> &a, const std::tuple<size_t, float, float> &b) 
-  {
-    if (std::get<1>(a) != std::get<1>(b))
-      return std::get<1>(a) > std::get<1>(b);
-    else 
-      return std::get<2>(a) > std::get<2>(b);
-  };
-
-  auto dist = [](const std::vector<std::pair<int, float> > &vec1, const std::vector<std::pair<int, float> > &vec2)
-  {
-    float d = 0.0;
-    auto it1 = vec1.begin();
-    auto it2 = vec2.begin();
-    while((it1 != vec1.end()) && it2 != vec2.end()) {
-      if (it1->first == it2->first) {
-        d += (it1->second - it2->second)*(it1->second - it2->second);
-        it1++; it2++;
-      }
-      else if (it1->first < it2->first) it1++;
-      else it2++;
-    }
-    return sqrt(d);
-  };
-
-  std::vector<size_t> indices(labels_vec.size());
-  for (size_t i = 0; i < indices.size(); ++i) { indices[i] = i; }
-
-  yj::xmlc::Reindexer l_idxer;
-  std::vector<std::vector<int> > r_labels_vec;
-  int max_lid = l_idxer.IndexLabels(labels_vec, indices, &r_labels_vec);
-
-  // build inverted index of labels
-  std::vector<std::vector<std::pair<size_t, float> > > l_inv_idx(max_lid + 1);
-  for (size_t i = 0; i < r_labels_vec.size(); ++i) {
-    float v = (label_normalize > 0) ? 1.0f / r_labels_vec[i].size() : 1.0f;
-    for (size_t l = 0; l < r_labels_vec[i].size(); ++l) {
-      l_inv_idx[r_labels_vec[i][l]].push_back(std::make_pair(i, v));
-    }
-  }
-  if (verbose > 0) { fprintf(stderr, "build inverted index\n"); }
-
-  std::vector<size_t> idx_len_vec(l_inv_idx.size());
-  for (size_t i = 0; i < idx_len_vec.size(); ++i) { idx_len_vec[i] = l_inv_idx[i].size(); }
-  std::sort(idx_len_vec.begin(), idx_len_vec.end(), std::greater<size_t>());
-
-  // set thresh for eliminating head labels
-  size_t budget = r_labels_vec.size() * cost_per_sample;
-  size_t thresh = idx_len_vec[0];
-  size_t count = 0;
-  size_t thresh_idx = 0;
-  for (size_t i = 0; i < idx_len_vec.size(); ++i) {
-    size_t idx = idx_len_vec.size() - 1 - i;
-    count += idx_len_vec[idx] * idx_len_vec[idx] - idx_len_vec[idx];
-    if (count > budget) { break; }
-    thresh = idx_len_vec[idx];
-    thresh_idx = idx;
-  }
-  if (verbose > 0) {
-    fprintf(stderr, "Top idx_len_vec -> ");
-    for (size_t i = 0; i < std::min(10LU, idx_len_vec.size()); ++i) { fprintf(stderr, "%lu, ", idx_len_vec[i]); }
-    fprintf(stderr, "\n");
-    fprintf(stderr, "thresh: %lu, idx: %lu (in %d)\n", thresh, thresh_idx, max_lid);
-  }
-
-  std::vector<std::tuple<size_t, float, float> > score_vec;
-  std::unordered_map<size_t, float> score_map;
-  std::unordered_map<size_t, float> dist_map;
-
-  float max_dist = 0;
-  pos_vec->resize(r_labels_vec.size());
-  for (size_t i = 0; i < r_labels_vec.size(); ++i) {
-    if (verbose > 0 && i % 1000 == 0) { fprintf(stderr, "\rsearch knn: %luK", i / 1000); }
-    score_map.clear();
-    dist_map.clear();
-
-    for (size_t l = 0; l < r_labels_vec[i].size(); ++l) {
-      size_t lid = r_labels_vec[i][l];
-      size_t list_size = l_inv_idx[lid].size();
-      if (list_size > thresh) { continue; } // skip too long list
-      for (size_t j = 0; j < list_size; ++j) {
-        size_t idx = l_inv_idx[lid][j].first;
-        if (i == idx) { continue; }
-        float v = l_inv_idx[lid][j].second;
-
-        auto itr = score_map.find(idx);
-        if (itr != score_map.end()) { itr->second += v; }
-        else { 
-          score_map[idx] = v;
-          auto d = dist(data_vec[i], data_vec[idx]);
-          dist_map[idx] = -d;
-
-          if (max_dist < d) max_dist = d;
-        }
-        ++count;
-      }
-    }
-
-    score_vec.clear();
-    for (auto itr = score_map.begin(); itr != score_map.end(); ++itr) {
-      auto tup = std::make_tuple(itr->first, itr->second, dist_map[itr->first]);
-      if (score_vec.size() >= num_pos) {
-        if (!comp(tup, score_vec.front())) { continue; }
-        std::pop_heap(score_vec.begin(), score_vec.end(), comp);
-        score_vec.pop_back();
-      }
-      score_vec.push_back(tup);
-      std::push_heap(score_vec.begin(), score_vec.end(), comp);
-    }
-    std::sort_heap(score_vec.begin(), score_vec.end(), comp);
-
-    (*pos_vec)[i].clear();
-    if (score_vec.size() > 0) { // if not sufficient, amplify positives
-      for (size_t j = 0; j < num_pos; ++j) {
-        (*pos_vec)[i].push_back(score_vec[j % score_vec.size()]);
-      }
-    }
-  }
-
-  for (auto ito = (*pos_vec).begin(); ito != (*pos_vec).end(); ++ito)
-    for (auto iti = ito->begin(); iti != ito->end(); ++iti) {
-      auto node = std::get<0>(*iti);
-      auto weight = std::get<1>(*iti);
-      auto d = -std::get<2>(*iti);
-      *iti = std::make_tuple(node, weight, 1.0 - d/max_dist);
-    }
-
-  if (verbose > 0) { fprintf(stderr, "\rget_positives done!\n"); }
-}
-
-void get_positives(
     const std::vector<std::vector<int> > &labels_vec,
     size_t num_pos, int label_normalize, size_t cost_per_sample, int verbose,
     std::vector<std::vector<std::pair<size_t, float> > > *pos_vec) {
@@ -445,9 +310,6 @@ void get_vertex_set(
           for (auto it = nn_graph[y].begin(); it != nn_graph[y].end(); ++it) {
             if (it->first == x) {
               nn_graph[y].erase(it);
-              if (nn_graph[y].size() == 0) {
-                C.insert(y); left_vertices.erase(y); vertex_count++;
-              }
               break;
             }
           }
@@ -517,7 +379,6 @@ void get_edge_set(
 
         S.insert(y);
         S_minus_C.insert(y);
-        left_vertices.erase(y);
 
         clus_ass.insert(x);
         clus_ass.insert(y);
@@ -526,8 +387,11 @@ void get_edge_set(
         ity = nn_graph[x].erase(ity);
         --ity;
 #if SYM
-        for (auto it = nn_graph[y].begin(); it != nn_graph[y].end(); ++it)
-          if (it->first == x) { nn_graph[y].erase(it); break; }
+        for (auto it = nn_graph[y].begin(); it != nn_graph[y].end(); ++it) {
+          if (it->first == x) {
+            nn_graph[y].erase(it); break;
+          }
+        }
 #endif
         for (auto itz = nn_graph[y].begin(); itz != nn_graph[y].end(); ++itz) {
           size_t z = itz->first;
@@ -541,11 +405,7 @@ void get_edge_set(
 #if SYM
           for (auto it = nn_graph[z].begin(); it != nn_graph[z].end(); ++it) {
             if (it->first == y) {
-              nn_graph[z].erase(it);
-
-              // check whether z becomes an isolated vertex. if so, remove it from left_vertices
-              if (nn_graph[z].size() == 0) left_vertices.erase(z);
-              break;
+              nn_graph[z].erase(it); break;
             }
           }
 #endif
@@ -736,18 +596,7 @@ float DataPartitioner::RunPairwise(const std::vector<std::vector<std::pair<int, 
   std::vector<std::pair<size_t, float> > neg_vec(num_nn);
 
   if (max_iter > 0) {
-    std::vector<std::vector<std::tuple<size_t, float, float> > > temp(data_vec.size());
-    get_positives(data_vec, labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &temp);
-
-    for (auto i = 0; i < temp.size(); i++) {
-      for (auto tup: temp[i]) {
-        auto node = std::get<0>(tup);
-        auto weight = std::get<1>(tup);
-        pos_vec[i].push_back(std::make_pair(node, weight));
-      }
-    }
-
-    temp.clear();
+    get_positives(labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &pos_vec);
   }
 
   size_t pair_num = 0;
@@ -800,8 +649,7 @@ float DataPartitioner::RunPairwise(const std::vector<std::vector<std::pair<int, 
 }
 
 
-float  DataPartitioner::RunNeighbourExpansion(const std::vector<std::vector<std::pair<int, float> > > &data_vec,
-                                             const std::vector<std::vector<int> > &labels_vec,
+float  DataPartitioner::RunNeighbourExpansion(const std::vector<std::vector<int> > &labels_vec,
                                              std::vector<std::set<size_t> > &cluster_assign,
                                              size_t K, size_t num_nn, int label_normalize,
                                              float replication_factor, bool vertex_partition, 
@@ -822,9 +670,9 @@ float  DataPartitioner::RunNeighbourExpansion(const std::vector<std::vector<std:
     return 0.0;
   }
 
-  std::vector<std::vector<std::tuple<size_t, float, float> > > pos_vec(labels_vec.size());
+  std::vector<std::vector<std::pair<size_t, float> > > pos_vec(labels_vec.size());
 
-  get_positives(data_vec, labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &pos_vec);
+  get_positives(labels_vec, num_nn, label_normalize, cost_per_sample, verbose, &pos_vec);
 
 #if SYM
   auto insert_pair = [](std::list<std::pair<size_t, float> > &vec, std::pair<size_t, float> p)
@@ -845,14 +693,13 @@ float  DataPartitioner::RunNeighbourExpansion(const std::vector<std::vector<std:
   for (auto i = 0; i < pos_vec.size(); ++i) {
     std::unordered_set<size_t> vset;
     for (auto&& p: pos_vec[i]) {
-      size_t cur = std::get<0>(p);
+      size_t cur = p.first;
       if (std::find(vset.begin(), vset.end(), cur) != vset.end())
         continue;
       vset.insert(cur);
 
-      float w = std::get<1>(p)/2.0;
-      insert_pair(nn_graph[i], std::make_pair(cur, w));
-      insert_pair(nn_graph[cur], std::make_pair(i, w));
+      insert_pair(nn_graph[i], std::make_pair(cur, p.second/2.0));
+      insert_pair(nn_graph[cur], std::make_pair(i, p.second/2.0));
     }
   }
 #else
@@ -861,28 +708,23 @@ float  DataPartitioner::RunNeighbourExpansion(const std::vector<std::vector<std:
   for (auto i = 0; i < pos_vec.size(); ++i) {
     std::unordered_set<size_t> vset;
     for (auto&& p: pos_vec[i]) {
-      size_t cur = std::get<0>(p);
+      size_t cur = p.first;
       if (std::find(vset.begin(), vset.end(), cur) != vset.end())
         continue;
       vset.insert(cur);
-
-      float w = std::get<1>(p);
-      nn_graph[i].push_back(std::make_pair(cur, w));
+      nn_graph[i].push_back(p);
     }
   }
-#endif
+#endif 
 
   pos_vec.clear();
 
-  std::set<size_t> left_vertices;
   size_t pair_num = 0;
   size_t iso_vertex_num = 0;
   for (size_t i = 0; i < nn_graph.size(); ++i) { 
     pair_num += nn_graph[i].size();
-    if (nn_graph[i].size() == 0) 
+    if (nn_graph[i].size() == 0)
       iso_vertex_num++;
-    else
-      left_vertices.insert(i);
   }
 
   if (verbose > 0) {
