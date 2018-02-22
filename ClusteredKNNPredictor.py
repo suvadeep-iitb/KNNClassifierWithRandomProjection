@@ -60,6 +60,10 @@ class ClusteredKNNPredictor(KNNPredictor):
     self.lIdMappingList = []
     for cId in range(nClusters):
       print(str(datetime.now()) + " : " + "Starting training on "+str(cId)+'-th cluster')
+
+      if np.sum(self.clusterAssignments == cId) == 0:
+        continue
+
       Xsam, fIdMapping = CompressDimension(X[np.equal(self.clusterAssignments, cId), :])
       Ysam, lIdMapping = CompressDimension(Y[np.equal(self.clusterAssignments, cId), :])
       print("Cluster "+str(cId)+": # of samples "+str(Xsam.shape[0])+", feature dim "+str(fIdMapping.shape[0])+", label dim "+str(lIdMapping.shape[0]))
@@ -71,13 +75,15 @@ class ClusteredKNNPredictor(KNNPredictor):
 
 
 
-  def Predict(self, Xt, nnTest, numThreads = 1):
+  def Predict(self, Xt, nnTest = 10, numThreads = 1):
     assert(Xt.shape[1] == self.featureDim)
 
     clusterAssignments = self.clusteringAlgo.predict(Xt)
     predYt = lil_matrix((Xt.shape[0], self.labelDim), dtype=int)
     scoreYt = lil_matrix((Xt.shape[0], self.labelDim), dtype=float)
     for i, predictor in enumerate(self.predictorList):
+      if np.sum(self.clusterAssignments == i) == 0:
+        continue
       Xtsam = Xt[np.equal(clusterAssignments, i), :]
       Xtsam = Xtsam[:, self.fIdMappingList[i]]
       print(str(datetime.now()) + " : " + "Performing prediction on "+str(i)+'-th clusters')
@@ -90,7 +96,7 @@ class ClusteredKNNPredictor(KNNPredictor):
 
 
 
-  def PredictAndComputePrecision(self, Xt, Yt, nnTestList, maxTestSamples, numThreads):
+  def PredictAndComputePrecision(self, Xt, Yt, nnTestList, maxTestSamples = 0, numThreads = 1):
     assert(Xt.shape[0] == Yt.shape[0])
     assert(Xt.shape[1] == self.featureDim)
     assert(Yt.shape[1] == self.labelDim)
@@ -101,51 +107,31 @@ class ClusteredKNNPredictor(KNNPredictor):
 
     clusterAssignments = self.clusteringAlgo.predict(Xt)
 
-    ####
-    '''
-    selRow = np.ones((Xt.shape[0]), dtype=bool)
-    labelCount = 0
-    print(str(np.sum(Yt.sum(1)==0)))
-    for i in range(Xt.shape[0]):
-      if (Yt[i, :].sum() > 0):
-        w = (Yt[i, :] * self.clusteringAlgo.Y_[clusterAssignments[i]].astype(float).T)/float(Yt[i, :].sum())
-      else:
-        w = 0
-      if w < 0.1:
-        selRow[i] = False
-        labelCount += Yt[i, :].sum()
-    clusterAssignments = clusterAssignments[selRow]
-    Xt = Xt[selRow, :]
-    Yt = Yt[selRow, :]
-    print(str(selRow.shape[0]-np.sum(selRow))+'/'+str(selRow.shape[0])+' test samples removed')
-    print('Average label count of the removed samples: '+str(labelCount/(selRow.shape[0]-np.sum(selRow))))
-    print(str(zeroCount))
-    '''
-    ####
-
-    resList = []
+    resDict = {}
     for i, predictor in enumerate(self.predictorList):
+      if np.sum(self.clusterAssignments == i) == 0:
+        continue
       Xtsam = Xt[np.equal(clusterAssignments, i), :]
       Ytsam = Yt[np.equal(clusterAssignments, i), :]
       Xtsam = Xtsam[:, self.fIdMappingList[i]]
       Ytsam = Ytsam[:, self.lIdMappingList[i]]
       print(str(datetime.now()) + " : " + "Computing results on "+str(i)+'-th cluster')
       res = predictor.PredictAndComputePrecision(Xtsam, Ytsam, nnTestList, 0, numThreads)
-      resList.append(res)
+      resDict[i] = res
       for nn in range(len(nnTestList)):
         print('Cluster '+str(i)+' : size '+str(sum(clusterAssignments==i))+' nn '+str(nnTestList[nn])+' prec@1 '+str(res[nn]['precision'][0]))
-    res = self.CombineResults(resList, clusterAssignments, nnTestList)
+    res = self.CombineResults(resDict, clusterAssignments, nnTestList)
     return res
 
 
 
-  def CombineResults(self, resList, clusterAssignments, nnTestList):
+  def CombineResults(self, resDict, clusterAssignments, nnTestList):
     combinedResList = []
     for nn in range(len(nnTestList)):
       predY = lil_matrix((clusterAssignments.size, self.labelDim), dtype=int)
       scoreY = lil_matrix((clusterAssignments.size, self.labelDim), dtype=float)
       precision = [0]*5
-      for i, res in enumerate(resList):
+      for i, res in resDict.items():
         ids = np.equal(clusterAssignments, i)
         precision = [p + np.sum(ids)*q for p,q in zip(precision, res[nn]['precision'])]
         if 'predY' in res[nn]:
@@ -154,9 +140,9 @@ class ClusteredKNNPredictor(KNNPredictor):
           scoreY[ids,  :] = res[nn]['scoreY']
       precision = [float(p)/clusterAssignments.size for p in precision]
       combinedRes = {'precision': precision}
-      if 'predY' in resList[0][nn]:
+      if 'predY' in resDict[0][nn]:
         combinedRes['predY'] = predY
-      if 'scoreY' in resList[0][nn]:
+      if 'scoreY' in resDict[0][nn]:
         combinedRes['scoreY'] = scoreY
       combinedResList.append(combinedRes)
     return combinedResList
