@@ -6,6 +6,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse
 import math
 import numpy as np
+from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.neighbors import NearestNeighbors
 
 class KNNPredictor:

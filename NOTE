@@ -1,6 +1,6 @@
 1. Building Boost: https://eb2.co/blog/2012/03/building-boost.python-for-python-3.2/
 2. g++ greet_binding.cpp -I/usr/include/python3.4 -I/usr/local/include  /usr/local/lib/libboost_python3.so.1.66.0  -lpython3.4m -o greet.so --shared -fPIC
-3. Env variable setting: export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+3. Env variable setting: export LD_LIBRARY_PATH=/home/suvadeep/Workspace/BoostPython/boost_1_66_0/stage/lib:$LD_LIBRARY_PATH
 4. libpython.so path: /usr/lib/x86_64-linux-gnu/
-5. Copy libboost_python3.so.1.66.0 and libboost_numpy3.so.1.66.0 into /usr/local/lib/
-6. DataPartitioner compilation command: g++ -std=c++11 -O2 DataPartitionerWrapper.cpp DataPartitioner.cc -I/usr/include/python3.5 -I/usr/local/include  /usr/local/lib/libboost_python3.so.1.66.0 /usr/local/lib/libboost_numpy3.so.1.66.0  -lpython3.5m -o data_partitioner.so --shared -fPIC
+5. make sure libboost_python3.so.1.66.0 and libboost_numpy3.so.1.66.0 are in /home/suvadeep/Workspace/BoostPython/boost_1_66_0/stage/lib
+6. DataPartitioner compilation command: g++ -std=c++11 -O2 DataPartitionerWrapper.cpp DataPartitioner.cc -I/usr/include/python3.5 -I/home/suvadeep/Workspace/BoostPython/boost_1_66_0 -L/home/suvadeep/Workspace/BoostPython/boost_1_66_0/stage/lib -lboost_python3 -lboost_numpy3 -lpython3.5m -o data_partitioner.so --shared -fPIC

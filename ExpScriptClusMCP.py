@@ -81,14 +81,14 @@ def PerformExperiment(p, data):
 
 params = {
   "numLearners": 1,
-  "numThreads": 10,
+  "numThreads": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "seed": 1,
   "itr": 10,
   "logFile": '',
   "maxTestSamples": 500000}
 
-embDimList = [100, 400]
+embDimList = [100, 500]
 clusterSizeList = [50000]
 lambdaList = [0.0001, 0.001, 0.01, 0.1]
 
