@@ -33,30 +33,37 @@ class OneVsRestEmbeddingAKNNPredictor(RandomEmbeddingAKNNPredictor):
 
     # Generate scheudo-random projection matrix
     np.random.seed(self.seed)
-    if (embDim == L):
-      R = identity(L, dtype='float')
+    if (embDim == 0):
+      R = csr_matrix(identity(L, dtype=np.float32))
+      embDim = L
     else:
       R = np.random.randn(L, embDim);
-      R[R > 0] = 1 / math.sqrt(embDim)
-      R[R < 0] = -1 / math.sqrt(embDim)
 
-    # Perform linear regression using liblinear
-    resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Y[:, l], X, l, C) for l in range(L))
+    maxMem = 2**34
+    batchSize = int(maxMem/L)
+    self.featureProjMatrix = np.zeros((D, embDim), np.float32)
+    avgTrainError = 0
 
-    # Collect the model parameters into a matrix
-    W = np.zeros((D, L), dtype=np.float);
-    for l in range(L):    
-      W[:, l] = resultList[l][0]
-    avgTrainError = sum([resultList[l][1] for l in range(L)])/L
-    print("Total training Error: "+str(avgTrainError))
+    for bs in range(0, L, batchSize):
+      be = min(bs + batchSize, L)
+      # Perform linear regression using liblinear
+      resultList = Parallel(n_jobs = numThreads)(delayed(TrainWrapper)(Y[:, l], X, l, C) for l in range(bs, be))
 
-    if (issparse(R)) :
-      self.featureProjMatrix = W * R
-    else:
-      self.featureProjMatrix = np.matmul(W, R)
-    self.trainError = avgTrainError
-    self.labelProjMatrix = identity(L, dtype=float)
+      avgTrainError += sum([resultList[l][1] for l in range(be-bs)])
 
+      # Collect the model parameters into a matrix
+      W = np.zeros((D, 0), dtype=np.float32);
+      for l in range(be-bs):
+        W = np.hstack((W, resultList[0][0].reshape((-1, 1))))
+        del resultList[0]
+
+      if (issparse(R)) :
+        self.featureProjMatrix += W * R[bs:be, :]
+      else:
+        self.featureProjMatrix += np.matmul(W, R[bs:be, :])
+
+    self.trainError = avgTrainError/L
+    print("Total training Error: "+str(self.trainError))
   
     '''
     # Put the labels into the queue
