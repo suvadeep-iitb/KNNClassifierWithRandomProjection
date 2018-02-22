@@ -51,6 +51,9 @@ class KNNPredictor:
 
 
   def ComputeLabelScore(self, KNN, nnTest, numThreads = 1):
+    if (KNN.shape[0] == 0):
+      return lil_matrix((0, self.Y.shape[1]), dtype=float)
+
     Y = self.Y
     nt = KNN.shape[0]
     L = Y.shape[1]
@@ -70,6 +73,8 @@ class KNNPredictor:
 
   def ComputePrecision(self, predYt, Yt, K, numThreads):
     assert(predYt.shape == Yt.shape)
+    if (predYt.shape[0] == 0):
+      return np.zeros((K), dtype=float)
 
     nt, L = Yt.shape
     batchSize = int(math.ceil(float(nt)/numThreads))
@@ -87,17 +92,24 @@ class KNNPredictor:
 
 
   def ComputeKNN(self, Xt, nnTest, numThreads = 1):
+    if (Xt.shape[0] == 0):
+      return np.zeros((0, nnTest), dtype=np.int64)
     if (issparse(Xt)):
-      KNN = self.graph.kneighbors(Xt, nnTest, return_distance = False)
+      KNN = self.graph.kneighbors(Xt, min(nnTest, Xt.shape[0]), return_distance = False)
+      if (KNN.shape[1] < nnTest):
+        rf = int(nnTest/KNN.shape[1])
+        KNN = np.hstack(tuple([KNN]*rf))
+        KNN = np.hstack((KNN, KNN[:, :(nnTest-KNN.shape[1])]))
     else:
-      neighbors = self.graph.knnQueryBatch(Xt, nnTest, num_threads=numThreads)
+      neighbors = self.graph.knnQueryBatch(Xt, min(nnTest, Xt.shape[0]), num_threads=numThreads)
       # Create the KNN matrix
-      KNN = np.zeros((Xt.shape[0], nnTest), dtype=np.int64);
+      KNN = np.zeros((Xt.shape[0], nnTest), dtype=np.int64)
       for i,nei in enumerate(neighbors):
-        if (len(nei[0]) < nnTest):
-          print(str(pXt.shape[0])+'/'+str(i)+' '+str(len(nei[0]))+' '+str(len(nei[1])))
-        KNN[i, :] = nei[0]
-
+        nn = nei[0].shape[1]
+        KNN[i, :nn] = nei[0]
+        if (nn < nnTest):
+          for j in range(nn, nnTest):
+            KNN[i, j] = nei[0][j % nn]
     return KNN
   
 
