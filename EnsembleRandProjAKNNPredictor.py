@@ -8,7 +8,7 @@ import copy
 import numpy as np
 from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor
 
-class EnsembleRandProjKNNPredictor(RandomEmbeddingAKNNPredictor):
+class EnsembleRandProjAKNNPredictor(RandomEmbeddingAKNNPredictor):
 
   def __init__(self, params):
     self.numLearners = params['numLearners']
