@@ -9,13 +9,13 @@ import math
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.svm import LinearSVR, LinearSVC
 from datetime import datetime
-from KNNPredictor import *
+from AKNNPredictor import *
 from sklearn.metrics import mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 
 
 
-class RandomEmbeddingAKNNPredictor(KNNPredictor):
+class RandomEmbeddingAKNNPredictor(AKNNPredictor):
 
   def __init__(self, params):
     self.embDim = params['embDim']
@@ -53,7 +53,7 @@ class RandomEmbeddingAKNNPredictor(KNNPredictor):
 
 
  
-  def ComputeKNN(self, Xt, nnTest, numThreads = 1):
+  def ComputeAKNN(self, Xt, nnTest, numThreads = 1):
     # Get the embedding of Xt 
     pXt = self.EmbedFeature(Xt, 1)
     # get the nearest neighbours for all the test datapoint

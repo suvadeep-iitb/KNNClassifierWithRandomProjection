@@ -2,7 +2,6 @@ import pickle
 import numpy as np
 from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
 from collections import namedtuple
-import labelCount as lc
 from multiprocessing import Pool
 import sys
 
@@ -65,62 +64,6 @@ def ReadDataFromSVMLightFile(filename):
   return csr_matrix(x), csr_matrix(y)
 
 
-
-def ReadDataFromODPFile(filename):
-  nExamples, totFeatures = CountStatistics(filename)
-  print('# of examples: '+str(nExamples)+' # of features: '+str(totFeatures))
-
-  indptr = np.zeros((nExamples+1,), dtype=np.int64)
-  indices = np.zeros((totFeatures,), dtype=np.int32)
-  data = np.zeros((totFeatures,), dtype=np.float)
-
-  l_indptr = np.zeros((nExamples+1,), dtype=np.int64)
-  l_indices = np.zeros((nExamples,), dtype=np.int32)
-  l_data = np.zeros((nExamples,), dtype=np.float)
-
-  with open(filename) as fin:
-    indptr[0] = 0
-    l_indptr[0] = 0
-    for e in range(nExamples):
-      line = fin.readline().split()
-      l_indptr[e+1] = e+1
-      l_indices[e] = int(line[0])
-      l_data[e] = 1.0
-      line = line[2:]
-      indptr[e+1] = indptr[e]+len(line)
-      for p in range(len(line)):
-        fid, fval = line[p].split(':')
-        indices[indptr[e]+p] = int(fid)
-        data[indptr[e]+p] = float(fval)
-  assert(indptr[nExamples] == totFeatures)
-
-  x = csr_matrix((data, indices, indptr))
-  y = csr_matrix((l_data, l_indices, l_indptr))
-
-  return x, y
-
-
-def ReadDataFromRelatedSearchFile(fileName):
-  with open(fileName) as fin:
-    line = fin.readline().strip().split()
-    nRow = int(line[0])
-    nCol = int(line[1])
-    M = lil_matrix((nRow, nCol+1), dtype=np.float)
-    for i in range(nRow):
-      line = fin.readline().strip().split()
-      for t in line:
-        col, val = t.split(':')
-        if (float(val) != 0):
-          M[i, int(col)] = float(val)
-  # Make sure the element id start from zero
-  if (M[:, 0].nnz == 0):
-    M = M[:, 1:]
-  else:
-    assert(M[:, nCol].nnz == 0)
-    M = M[:, :nCol]
-  return csr_matrix(M)
-
-
 class Data:
   def __init__(self, X, Y, Xt, Yt):
     self.X = X
@@ -130,15 +73,18 @@ class Data:
 
 
 if __name__ == '__main__':
-  trainFile = sys.argv[1]
-  testFile = sys.argv[2]
+  dataFile = sys.argv[1]
+  trainSplit = float(sys.argv[2])
   pickleFile = sys.argv[3]
 
   if pickleFile[-4:] != '.pkl':
     pickleFile = pickleFile + '.pkl'
 
-  X, Y = ReadDataFromODPFile(trainFile)
-  Xt, Yt = ReadDataFromODPFile(testFile)
+  X, Y = ReadDataFromSVMLightFile(dataFile)
+  numSamples = X.shape[0]
+  trainSamples = int(numSamples*trainSplit)
+  Xt, Yt = (X[trainSamples:, :], Y[trainSamples:, :])
+  X, Y = (X[:trainSamples, :], Y[:trainSamples, :])
   
   data = Data(X = X, Y = Y, Xt = Xt, Yt = Yt)
   pickle.dump(data, open(pickleFile, 'wb'), pickle.HIGHEST_PROTOCOL)

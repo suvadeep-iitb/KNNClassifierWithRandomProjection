@@ -29,10 +29,10 @@ class EnsembleAKNNPredictor(AKNNPredictor):
       self.learnerList.append(newBasePredictor)
 
 
-  def Train(self, X, Y, numThreads = 1, itr = 10):
+  def Train(self, X, Y, numThreads = 1):
     for i in range(self.numLearners):
       print(str(datetime.now()) + " : " + "Performing training for " + str(i) + "-th learner")
-      self.learnerList[i].Train(X, Y, numThreads = numThreads, itr = itr)
+      self.learnerList[i].Train(X, Y, numThreads = numThreads)
 
 
   def EmbedFeature(self, X, numThreads):

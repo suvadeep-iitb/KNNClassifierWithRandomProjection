@@ -17,13 +17,13 @@ class AKNNPredictor:
 
 
 
-  def Train(self, X, Y, maxTrainSamples, numThreads):
+  def Train(self, X, Y, numThreads = 1):
     assert(X.shape[0] == Y.shape[0])
 
     if issparse(X):
       # The python interface of nmslib library most probably does not support sparse input
       # Use KDTree of sklearn package
-      print(str(datetime.now()) + " : " + "Creating KNN graph over train examples using sklearn functions")
+      print(str(datetime.now()) + " : " + "Creating Approximate KNN graph over train examples using sklearn functions")
       self.graph = NearestNeighbors(n_neighbors = 10, radius = 5, 
                                     algorithm = 'auto', metric = 'l2',
                                     n_jobs = numThreads)
@@ -41,7 +41,7 @@ class AKNNPredictor:
   def Predict(self, Xt, nnTest, numThreads = 1):
     # Compute K nearest neighbors for input data
     print(str(datetime.now()) + " : " + "Computing Approximate KNN")
-    knn = self.ComputeKNN(Xt, nnTest, numThreads);
+    knn = self.ComputeAKNN(Xt, nnTest, numThreads);
     
     # Predict labels for input data
     print(str(datetime.now()) + " : " + "Performing prediction")
@@ -125,7 +125,7 @@ class AKNNPredictor:
     maxNNTest = max(nnTestList)
     # Compute K nearest neighbors for input data
     print(str(datetime.now()) + " : " + "Computing KNN")
-    knn = self.ComputeKNN(Xt, maxNNTest, numThreads);
+    knn = self.ComputeAKNN(Xt, maxNNTest, numThreads);
     
     resList = []
     for nnTest in nnTestList:

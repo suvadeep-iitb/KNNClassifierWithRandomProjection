@@ -3,10 +3,10 @@ import pickle
 import numpy as np
 from scipy.sparse import csr_matrix, vstack, hstack, issparse
 from sklearn.preprocessing import normalize
-import labelCount as lc
-from KNNPredictor import KNNPredictor as KNNPredictor
-#from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
-#from EnsembleRandProjKNNPredictor import EnsembleRandProjKNNPredictor
+#import labelCount as lc
+#from AKNNPredictor import AKNNPredictor as KNNPredictor
+from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
+from EnsembleAKNNPredictor import EnsembleAKNNPredictor
 
 
 
@@ -41,90 +41,84 @@ def MyNormalize(X, Xt, norm):
   return XXt[:n, :], XXt[n:, :]
 
 params = {
-  "numLearners": 1,
+  "numLearners": 3,
   "numThreads": 20,
   "normalization": 'l2_row', # l2_row / l2_col / l1_row / l1_col / max_row / max_col
   "lamb": 1,
+  "nnTestList": [1, 3, 10],
+  "embDim": 20,
   "seed": 1,
-  "itr": 1,
   "logFile": '',
-  "maxTestSamples": 200000,
-  "maxTrainSamples": 6000000}
+  "maxTestSamples": 0}
+
+dataFile = "bibtex.pkl"
+
+data = pickle.load(open(dataFile, 'rb'))
+
+# Perform initial random permutation of the data
+print("Randomly permuting the data ...")
+perm = np.random.permutation(data.X.shape[0])
+data.X = data.X[perm, :]
+data.Y = data.Y[perm, :]
+
+perm = np.random.permutation(data.Xt.shape[0])
+data.Xt = data.Xt[perm, :]
+data.Yt = data.Yt[perm, :]
 
 
-lambdaList = [1]
-nnTestList = [10]
-embDimList = [20]
-maxTS = [0]
+# Remove label with no sample
+labelCounts = np.array(np.sum(data.Y, axis=0)).reshape(-1)
+nonemptyLabels = (labelCounts > 0)
+data.Y = data.Y[:, nonemptyLabels]
+data.Yt = data.Yt[:, nonemptyLabels]
 
-for i in [25]:
-  labelStruct = lc.labelStructs[i]
 
-  dataFile = labelStruct.fileName
-  print("Running for " + dataFile)
-  data = pickle.load(open(dataFile, 'rb'))
-  # For related search data, feature matrix in dense
+# Normalize data
+data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
 
-  # Perform initial random permutation of the data
-  print("Randomly permuting the data ...")
-  perm = np.random.permutation(data.X.shape[0])
-  data.X = data.X[perm, :]
-  data.Y = data.Y[perm, :]
+params["featureDim"] = data.X.shape[1]
+params["labelDim"] = data.Y.shape[1]
 
-  perm = np.random.permutation(data.Xt.shape[0])
-  data.Xt = data.Xt[perm, :]
-  data.Yt = data.Yt[perm, :]
+print("")
+print("Hyper-parameters:")
+print("\tData File               : %s" % (dataFile))
+print("\tNum Learners            : %s" % (params["numLearners"]))
+print("\tNum Threads             : %s" % (params["numThreads"]))
+print("\tFeature Normalization   : %s" % (params["normalization"]))
+print("\tLambda                  : %s" % (params["lamb"]))
+print("\tK List                  : %s" % (params["nnTestList"]))
+print("\tEmbedding Dimension     : %s" % (params["embDim"]))
+print("\tSeed                    : %s" % (params["seed"]))
+print("\tMax Test Samples        : %s" % (params["maxTestSamples"]))
+print("")
+print("")
 
-  # Remove label with no sample
-  labelCounts = np.array(np.sum(data.Y, axis=0)).reshape(-1)
-  nonemptyLabels = (labelCounts > 0)
-  data.Y = data.Y[:, nonemptyLabels]
-  data.Yt = data.Yt[:, nonemptyLabels]
-
-  # Normalize data
-  data.X, data.Xt = MyNormalize(data.X, data.Xt, params['normalization'])
-
-  params["featureDim"] = data.X.shape[1]
-  params["labelDim"] = data.Y.shape[1]
-
-  resFilePrefix = labelStruct.resFile;
-  for ed in embDimList:
-    for ts in maxTS:
-      params['maxTrainSamples'] = ts
-      for lam in lambdaList:
-        params["lamb"] = lam
-        params["embDim"] = ed
-        print("\tRunning for " + "lambda = " + str(params["lamb"]) + " emb_dim = " + str(params["embDim"]));
-
-        knnPredictor = KNNPredictor(params)
-        knnPredictor.Train(data.X, 
-                         data.Y,
-                         maxTrainSamples = params['maxTrainSamples'],
-                         numThreads = params['numThreads'])
-        testResList = knnPredictor.PredictAndComputePrecision(
+nnTestList = params["nnTestList"]
+params["basePredictor"] = KNNPredictor(params)
+knnPredictor = EnsembleAKNNPredictor(params)
+knnPredictor.Train(data.X, 
+                   data.Y,
+                   numThreads = params['numThreads'])
+testResList = knnPredictor.PredictAndComputePrecision(
                          data.Xt,
                          data.Yt,
                          nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 20))
-        '''
-        trainResList = knnPredictor.PredictAndComputePrecision(
+                         params['numThreads'])
+trainResList = knnPredictor.PredictAndComputePrecision(
                          data.X,
                          data.Y,
-                         #nnTestList,
+                         nnTestList,
                          params['maxTestSamples'],
-                         max(params['numThreads'], 20))
-        '''
-        resFile = 'Results/KNN_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-        #resFile = 'Results/RandProj_'+resFilePrefix+'_TS'+str(ts)+'_L'+str(lam)+'_D'+str(ed)+'.pkl'
-        pickle.dump({'testRes' : testResList, 
-                     #'trainRes' : trainResList, 
-                     'nnTestList' : nnTestList, 
-                     #'featureProjMatrix' : knnPredictor.GetFeatureProjMatrix(),
-                     #'trainSample' : knnPredictor.sampleIndices,
-                     #'trainError' : knnPredictor.trainError,
-                     #'testError' : knnPredictor.MeanSquaredError(data.Xt, data.Yt, params['maxTestSamples']),
-                     'params' : params}, open(resFile, 'wb'), pickle.HIGHEST_PROTOCOL)
-        print('')
-        print('')
-        print('')
+                         params['numThreads'])
+
+print("")
+for (k, testRes, trainRes) in zip(nnTestList, testResList, trainResList):
+    print("K: %s\tPrec \t Train \t\t Test" % (k))
+    print("     \t1    \t %0.4f \t %0.4f" % (trainRes["precision"][0][0], testRes["precision"][0][0]))
+    print("     \t2    \t %0.4f \t %0.4f" % (trainRes["precision"][1][0], testRes["precision"][1][0]))
+    print("     \t3    \t %0.4f \t %0.4f" % (trainRes["precision"][2][0], testRes["precision"][2][0]))
+    print("     \t4    \t %0.4f \t %0.4f" % (trainRes["precision"][3][0], testRes["precision"][3][0]))
+    print("     \t5    \t %0.4f \t %0.4f" % (trainRes["precision"][4][0], testRes["precision"][4][0]))
+    print("")
+print("")
