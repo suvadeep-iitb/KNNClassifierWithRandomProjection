@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.neighbors import NearestNeighbors
 
-class KNNPredictor:
+class AKNNPredictor:
 
   def __init__(self, params):
     self.logFile = params['logFile']
