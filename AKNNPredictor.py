@@ -92,7 +92,7 @@ class AKNNPredictor:
 
 
 
-  def ComputeKNN(self, Xt, nnTest, numThreads = 1):
+  def ComputeAKNN(self, Xt, nnTest, numThreads = 1):
     if (Xt.shape[0] == 0):
       return np.zeros((0, nnTest), dtype=np.int64)
     if (issparse(Xt)):
