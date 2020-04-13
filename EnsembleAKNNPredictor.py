@@ -6,7 +6,7 @@ from scipy.sparse import csr_matrix, lil_matrix, coo_matrix, vstack, issparse
 import math
 import copy
 import numpy as np
-from KNNPredictor import *
+from AKNNPredictor import *
 
 class EnsembleAKNNPredictor(AKNNPredictor):
   def __init__(self, params):
@@ -54,7 +54,7 @@ class EnsembleAKNNPredictor(AKNNPredictor):
     raise NotImplemented
 
 
-  def ComputeKNN(self, Xt, nnTest, numThreads = 1):
+  def ComputeAKNN(self, Xt, nnTest, numThreads = 1):
     raise NotImplemented
 
 
@@ -72,7 +72,7 @@ class EnsembleAKNNPredictor(AKNNPredictor):
     for i in range(self.numLearners):
       # Compute K nearest neighbors for i-th learner
       print(str(datetime.now()) + " : " + "Computing KNN for " + str(i) + "-th learner")
-      knn = self.learnerList[i].ComputeKNN(Xt, maxNNTest, numThreads)
+      knn = self.learnerList[i].ComputeAKNN(Xt, maxNNTest, numThreads)
 
       for nn, nnTest in enumerate(nnTestList):
         # predict labels
