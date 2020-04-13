@@ -9,9 +9,7 @@ import math
 from liblinearutil import *
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.svm import LinearSVR
-from MyThread import myThread
 import threading
-from MyQueue import myQueue
 from datetime import datetime
 
 def RandProj(X, Y, params):
@@ -32,7 +30,6 @@ def RandProj(X, Y, params):
   # Perform linear regression using liblinear
   W = np.zeros((D, embDim), dtype=np.float);
 
-  libArgs = '-s 11 -p 0 -c '+str(C)+' -n '+str(numThreads)+' -q'
   numCores = numThreads; # multiprocessing.cpu_count()
   resultList = Parallel(n_jobs = numCores)(delayed(TrainWrapper)(Z[:, l], X, l, C) for l in range(embDim))
 
@@ -40,47 +37,7 @@ def RandProj(X, Y, params):
   for l in range(embDim):    
     W[:, l] = resultList[l]
   return W
-  '''
-  # Put the labels into the queue
-  queueLock = threading.Lock()
-  labelQueue = myQueue()
-  queueLock.acquire()
-  for l in range(embDim):
-    labelQueue.enqueue(l)
-  queueLock.release()
-
-  params = {"X": X, "Z": Z, "C": C, "W": W}
-
-  # Create new threads
-  threadList = []
-  for tID in range(numThreads):
-    thread = myThread(tID, labelQueue, queueLock, TrainWrapper, params)
-    thread.start()
-    threadList.append(thread)
-
-  # Wait for all threads to complete
-  for t in threadList:
-    t.join()
-
-  # Return the model parameter
-  return params["W"]
-  '''
-
-
-'''
-def TrainWrapper(l, params):
-  X = params["X"]
-  Z = params["Z"][:, l]
-  C = params["C"]
   
-  model = LinearSVR(epsilon=0.0, 
-                    C=C, 
-                    loss='squared_epsilon_insensitive', 
-                    dual=False, 
-                    fit_intercept=False)
-  model.fit(X, Z)
-  params["W"][:, l] = model.coef_
-'''
 
 
 def TrainWrapper(Z, X, l, C):
@@ -133,7 +90,7 @@ def ComputeAKNN(index, W, Xt, nnTest, numThreads):
 
 
 
-def ComputeKNN(W, X, Xt, nnTest):
+def ComputeAKNN(W, X, Xt, nnTest):
   nt = Xt.shape[0]
 
   # Project the X and Xt into the embedding space
@@ -251,20 +208,6 @@ def ComputePrecision(predYt, Yt, K):
           precision[k, 0] += 1/float(k+1)
   precision /= float(nt)
   return precision
-'''
-def ComputePrecision(predYt, Yt, K):
-  assert(predYt.shape == Yt.shape)
-  nt = Yt.shape[0]
-  precision = np.zeros((K, 1), dtype=np.float)
-  for k in range(1, K+1):
-    for i in range(nt):
-      for j in range(k):
-        if (Yt[i, predYt[i, j]] > 0):
-          precision[k-1, 0] += 1
-  for k in range(K):
-    precision[k, 0] /= float(nt)*(k+1)
-  return precision
-'''
 
 
 
@@ -308,7 +251,7 @@ def LoadModel(filename):
 
 
 
-def RandomProjKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
+def RandomProjAKNNPredictor(X, Y, Xt, Yt, params, nnTestList):
   # Make sure label index is stating from 1
   if ((Y[:, 0].nnz != 0) or (Yt[:, 0].nnz != 0)):
     print(str(datetime.now()) + " : " + "Pre-pending zero column in the label matrices")
