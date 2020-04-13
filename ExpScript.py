@@ -5,7 +5,7 @@ from scipy.sparse import csr_matrix, vstack, hstack, issparse
 from sklearn.preprocessing import normalize
 #import labelCount as lc
 #from AKNNPredictor import AKNNPredictor as KNNPredictor
-from RandomEmbeddingAKNNPredictor import RandomEmbeddingAKNNPredictor as KNNPredictor
+from RandomProjAKNNPredictor import RandomProjAKNNPredictor as KNNPredictor
 from EnsembleAKNNPredictor import EnsembleAKNNPredictor
 
 
