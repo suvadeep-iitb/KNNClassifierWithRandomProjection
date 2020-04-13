@@ -15,7 +15,7 @@ from sklearn.neighbors import NearestNeighbors
 
 
 
-class RandomEmbeddingAKNNPredictor(AKNNPredictor):
+class RandomProjAKNNPredictor(AKNNPredictor):
 
   def __init__(self, params):
     self.embDim = params['embDim']
