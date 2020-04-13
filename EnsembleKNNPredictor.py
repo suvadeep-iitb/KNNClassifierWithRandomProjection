@@ -8,7 +8,7 @@ import copy
 import numpy as np
 from KNNPredictor import *
 
-class EnsembleKNNPredictor(KNNPredictor):
+class EnsembleAKNNPredictor(AKNNPredictor):
   def __init__(self, params):
     self.numLearners = params['numLearners']
     self.basePredictor = params['basePredictor']
