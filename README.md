@@ -7,8 +7,8 @@ embedding based K-Nearest Neighbors (KNN) algorithm to solve the above three pro
 The algorithm has adopted two strategies towards making a KNN classifier efficient
 for extreme classification:
 
-* It uses embedding of the feature vectors into a smaller dimentional vector space. 
-The KNN graph is built on this reduced dimentional feature space. 
+* It uses embedding of the feature vectors into a smaller dimensional vector space. 
+The KNN graph is built on this reduced dimensional feature space. 
 [Johnson-Lindenstrauss lemma](https://en.wikipedia.org/wiki/Johnson%E2%80%93Lindenstrauss_lemma) 
 allows the dimension of the reduced feature space as small as logarithmic order of the number of 
 labels without losing too much information.
@@ -65,11 +65,11 @@ the following command:
 python3 ExpScript.py
 ```
 
-It will run the experiments using deault hype-parameter values and show you the
-result on the terminal. To run experiments using other hyper-parametering
+It will run the experiments using default hype-parameter values and show you the
+result on the terminal. To run experiments using other hyper-parameter
 setting, you can modify the params dictionary in ExpScipt.py.
 
 
 ## Acknowledgments
 The work has been jointly done with Prof. Ganesh Ramakrishnan, IIT Bombay, India
-and Prateek Jain, Microfoft Research India.
+and Prateek Jain, Microsoft Research India.
